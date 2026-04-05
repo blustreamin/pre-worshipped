@@ -4,6 +4,9 @@ import { SEED_CARS } from "@/lib/seed-data";
 
 export async function POST() {
   try {
+    // Delete existing seed data (IDs starting with 's')
+    await supabase.from("cars").delete().like("id", "s%");
+
     const { data, error } = await supabase
       .from("cars")
       .upsert(
@@ -20,7 +23,7 @@ export async function POST() {
 
     return NextResponse.json({
       success: true,
-      message: `Seeded ${SEED_CARS.length} cars`,
+      message: `Re-seeded ${SEED_CARS.length} cars (old seed data cleared)`,
       count: SEED_CARS.length,
     });
   } catch (error: any) {

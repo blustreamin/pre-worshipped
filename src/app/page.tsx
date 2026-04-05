@@ -203,24 +203,30 @@ const MODEL_COLOR_IMAGES: Record<string, Record<string, string>> = {
   "Kia Sonet": { _default: "https://imgd.aeplcdn.com/664x374/n/cw/ec/141115/sonet-exterior-right-front-three-quarter-2.jpeg", red: "https://imgd.aeplcdn.com/664x374/n/cw/ec/141115/sonet-exterior-right-front-three-quarter-2.jpeg", intense: "https://imgd.aeplcdn.com/664x374/n/cw/ec/141115/sonet-exterior-right-front-three-quarter-2.jpeg", white: "https://imgd.aeplcdn.com/664x374/n/cw/ec/141115/sonet-exterior-right-front-three-quarter.jpeg", black: "https://imgd.aeplcdn.com/664x374/n/cw/ec/141115/sonet-exterior-right-front-three-quarter-3.jpeg" },
   "Hyundai Venue": { _default: "https://imgd.aeplcdn.com/664x374/n/cw/ec/136301/venue-exterior-right-front-three-quarter-2.jpeg", silver: "https://imgd.aeplcdn.com/664x374/n/cw/ec/136301/venue-exterior-right-front-three-quarter-2.jpeg", typhoon: "https://imgd.aeplcdn.com/664x374/n/cw/ec/136301/venue-exterior-right-front-three-quarter-2.jpeg", white: "https://imgd.aeplcdn.com/664x374/n/cw/ec/136301/venue-exterior-right-front-three-quarter.jpeg", blue: "https://imgd.aeplcdn.com/664x374/n/cw/ec/136301/venue-exterior-right-front-three-quarter-3.jpeg", red: "https://imgd.aeplcdn.com/664x374/n/cw/ec/136301/venue-exterior-right-front-three-quarter-4.jpeg" },
   "Mahindra Bolero": { _default: "https://imgd.aeplcdn.com/664x374/n/cw/ec/47703/bolero-exterior-right-front-three-quarter.jpeg", white: "https://imgd.aeplcdn.com/664x374/n/cw/ec/47703/bolero-exterior-right-front-three-quarter.jpeg", diamond: "https://imgd.aeplcdn.com/664x374/n/cw/ec/47703/bolero-exterior-right-front-three-quarter.jpeg", black: "https://imgd.aeplcdn.com/664x374/n/cw/ec/47703/bolero-exterior-right-front-three-quarter-2.jpeg", silver: "https://imgd.aeplcdn.com/664x374/n/cw/ec/47703/bolero-exterior-right-front-three-quarter-3.jpeg" },
+  "Tata Yodha": { _default: "https://imgd.aeplcdn.com/664x374/n/cw/ec/45259/yodha-exterior-right-front-three-quarter.jpeg", white: "https://imgd.aeplcdn.com/664x374/n/cw/ec/45259/yodha-exterior-right-front-three-quarter.jpeg" },
+  "Tata Xenon": { _default: "https://imgd.aeplcdn.com/664x374/n/cw/ec/23793/xenon-yodha-exterior-right-front-three-quarter.jpeg", white: "https://imgd.aeplcdn.com/664x374/n/cw/ec/23793/xenon-yodha-exterior-right-front-three-quarter.jpeg" },
+  "Toyota Innova Hycross": { _default: "https://imgd.aeplcdn.com/664x374/n/cw/ec/135591/innova-hycross-exterior-right-front-three-quarter-2.jpeg", white: "https://imgd.aeplcdn.com/664x374/n/cw/ec/135591/innova-hycross-exterior-right-front-three-quarter-2.jpeg", black: "https://imgd.aeplcdn.com/664x374/n/cw/ec/135591/innova-hycross-exterior-right-front-three-quarter.jpeg", grey: "https://imgd.aeplcdn.com/664x374/n/cw/ec/135591/innova-hycross-exterior-right-front-three-quarter-3.jpeg" },
 };
 
 function carImg(model: string, color?: string): string {
-  // Find model entry
-  const modelKey = Object.keys(MODEL_COLOR_IMAGES).find(k => model?.includes(k));
+  // Find model entry — prefer longest match (most specific)
+  const matches = Object.keys(MODEL_COLOR_IMAGES).filter(k => model?.includes(k));
+  const modelKey = matches.sort((a, b) => b.length - a.length)[0]; // longest match first
   if (!modelKey) return "";
   const colorMap = MODEL_COLOR_IMAGES[modelKey];
 
   // If color provided, try to match it
   if (color) {
-    const colorLower = color.toLowerCase();
-    // Try each color keyword
-    for (const [key, url] of Object.entries(colorMap)) {
-      if (key === "_default") continue;
-      if (colorLower.includes(key) || key.includes(colorLower.split(" ")[0])) return url;
+    const words = color.toLowerCase().split(/[\s,/()-]+/).filter(w => w.length > 2);
+    for (const word of words) {
+      for (const [key, url] of Object.entries(colorMap)) {
+        if (key === "_default") continue;
+        if (key === word || word.includes(key) || key.includes(word)) return url;
+      }
     }
   }
-  return colorMap._default || "";
+  // Always fall back to default - never return empty
+  return colorMap._default || Object.values(colorMap)[0] || "";
 }
 
 // ─── Time helpers ───
