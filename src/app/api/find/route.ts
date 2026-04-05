@@ -90,32 +90,67 @@ export async function POST(req: NextRequest) {
 
     const data = await response.json();
 
-    // Extract text content from response
+    // Extract ALL text content from response (skip tool use/result blocks)
     let textContent = "";
     for (const block of data.content || []) {
       if (block.type === "text") {
-        textContent += block.text;
+        textContent += block.text + "\n";
       }
     }
 
-    // Parse JSON from response
+    console.log("[AI Finder] Raw text length:", textContent.length);
+
+    // Parse JSON from response — try multiple strategies
     let cars: any[] = [];
+
+    // Strategy 1: Strip markdown code fences and try direct parse
+    const stripped = textContent.replace(/```json\s*/g, "").replace(/```\s*/g, "").trim();
     try {
-      // Try direct parse
-      cars = JSON.parse(textContent.trim());
+      const parsed = JSON.parse(stripped);
+      cars = Array.isArray(parsed) ? parsed : [];
     } catch {
-      // Try extracting JSON array from text
-      const jsonMatch = textContent.match(/\[[\s\S]*\]/);
-      if (jsonMatch) {
-        try {
-          cars = JSON.parse(jsonMatch[0]);
-        } catch {
-          console.error("[AI Finder] Could not parse JSON from response");
+      // Strategy 2: Find the largest JSON array in the text
+      const arrayMatches = stripped.match(/\[[\s\S]*?\](?=\s*$|\s*\n|\s*```)/g) || stripped.match(/\[[\s\S]*\]/g);
+      if (arrayMatches) {
+        // Try each match, starting with the longest (most likely the full array)
+        const sorted = arrayMatches.sort((a, b) => b.length - a.length);
+        for (const m of sorted) {
+          try {
+            const parsed = JSON.parse(m);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              cars = parsed;
+              break;
+            }
+          } catch {
+            // Try fixing common JSON issues: trailing commas, unescaped quotes
+            try {
+              const fixed = m.replace(/,\s*\]/g, "]").replace(/,\s*\}/g, "}");
+              const parsed = JSON.parse(fixed);
+              if (Array.isArray(parsed) && parsed.length > 0) {
+                cars = parsed;
+                break;
+              }
+            } catch { continue; }
+          }
+        }
+      }
+
+      // Strategy 3: Try to find individual JSON objects and collect them
+      if (cars.length === 0) {
+        const objMatches = stripped.match(/\{[^{}]*"model"[^{}]*\}/g);
+        if (objMatches) {
+          for (const obj of objMatches) {
+            try {
+              const parsed = JSON.parse(obj);
+              if (parsed.model) cars.push(parsed);
+            } catch { continue; }
+          }
         }
       }
     }
 
     if (!Array.isArray(cars)) cars = [];
+    console.log("[AI Finder] Parsed cars:", cars.length);
 
     // Clean and validate
     const validCars = cars

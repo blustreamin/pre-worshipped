@@ -187,6 +187,7 @@ export default function Dashboard() {
 
   const runFind = async (query?: string, models?: string[]) => {
     setFinding(true);
+    setLastFind(null);
     flash("🔍 AI is searching for real listings...");
     try {
       const r = await fetch("/api/find", {
@@ -200,6 +201,13 @@ export default function Dashboard() {
           models: models || findModels,
         }),
       });
+      if (!r.ok) {
+        const text = await r.text();
+        setLastFind({ found: 0, error: `Server error (${r.status}). Check ANTHROPIC_API_KEY in Vercel.` });
+        flash("Search failed — check API key");
+        setFinding(false);
+        return;
+      }
       const d = await r.json();
       setLastFind(d);
       if (d.success && d.found > 0) {
@@ -208,9 +216,10 @@ export default function Dashboard() {
       } else if (d.error?.includes("ANTHROPIC_API_KEY")) {
         flash("⚠️ Add ANTHROPIC_API_KEY in Vercel env vars");
       } else {
-        flash(`No listings found. Try different search terms.`);
+        flash(d.found === 0 ? "No listings found — try broader terms" : "Search complete");
       }
     } catch (e: any) {
+      setLastFind({ found: 0, error: `Network error: ${e.message}` });
       flash(`Search failed: ${e.message}`);
     }
     setFinding(false);
