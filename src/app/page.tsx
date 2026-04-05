@@ -6,7 +6,8 @@ import type { Car, Preferences, AiAnalysis } from "@/lib/supabase";
 import {
   MODEL_INTEL, SOURCE_TRUST, SCOUT_STAGES, CHECKLIST_TEMPLATE,
   findModelIntel, calcDepreciation, scoreCar, generateInsights,
-  BASE_LOCATIONS, getDistance, getDistanceLabel, getDisplacement, isDieselHunterMatch,
+  BASE_LOCATIONS, getDistance, getDistanceLabel, getDisplacement,
+  isDieselHunterMatch, isPickupHunterMatch, is4x4HunterMatch, isPickup, is4x4Capable,
 } from "@/lib/car-intel";
 import { SEED_CARS } from "@/lib/seed-data";
 
@@ -49,6 +50,7 @@ const DEFAULT_PREFS: Preferences = {
   wants_mods: true, wants_4x4: true,
   base_city: "Chennai", search_radius: 600,
   diesel_hunter: true, min_displacement: 2000,
+  pickup_hunter: true, fourx4_hunter: true,
 };
 
 // Score color helper
@@ -209,7 +211,7 @@ export default function Dashboard() {
   }
 
   // ─── Add car ───
-  const emptyNew = { model: "", variant: "", year: 2023, km: 0, price: 0, fuel: "Diesel", transmission: "Manual", body_type: "SUV", drivetrain: "2WD", owners: 1, reg_state: "TN", city: "Chennai", color: "", source: "Cars24", certified: false, link: "", notes: "", stage: "discovered" };
+  const emptyNew = { model: "", variant: "", year: 2023, km: 0, price: 0, fuel: "Diesel", transmission: "Manual", body_type: "SUV", drivetrain: "2WD", owners: 1, reg_state: "TN", city: "Chennai", color: "", source: "Cars24", certified: false, link: "", notes: "", stage: "discovered", seller_name: "", seller_phone: "", seller_type: "unknown" };
   const [nc, setNc] = useState<any>(emptyNew);
 
   async function addCar() {
@@ -254,52 +256,46 @@ export default function Dashboard() {
   // ─── BOARD VIEW ───
   const renderBoard = () => {
     const dieselHunterCount = prefs.diesel_hunter ? processed.filter(c => isDieselHunterMatch(c, prefs)).length : 0;
+    const pickupHunterCount = prefs.pickup_hunter ? processed.filter(c => isPickupHunterMatch(c, prefs)).length : 0;
+    const fourx4HunterCount = prefs.fourx4_hunter ? processed.filter(c => is4x4HunterMatch(c, prefs)).length : 0;
 
     return (
     <div>
-      {/* Diesel Hunter + Location Bar */}
+      {/* Hunters + Location Bar */}
       <div className="bg-pw-card rounded-xl border border-pw-border p-4 mb-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-3">
-            {/* Location selector */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-pw-muted">📍</span>
-              <select className="bg-pw-deep border border-pw-border rounded-lg px-3 py-1.5 text-xs outline-none cursor-pointer text-pw-text"
-                value={prefs.base_city} onChange={e => savePrefs({ ...prefs, base_city: e.target.value })}>
-                {BASE_LOCATIONS.map(l => <option key={l.id} value={l.city}>{l.label}</option>)}
-              </select>
-            </div>
-            {/* Radius */}
-            <div className="flex items-center gap-2">
-              <select className="bg-pw-deep border border-pw-border rounded-lg px-2 py-1.5 text-xs outline-none cursor-pointer text-pw-muted"
-                value={prefs.search_radius} onChange={e => savePrefs({ ...prefs, search_radius: +e.target.value })}>
-                <option value={200}>200km</option>
-                <option value={400}>400km</option>
-                <option value={600}>600km</option>
-                <option value={1000}>1000km</option>
-                <option value={9999}>All India</option>
-              </select>
-            </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-pw-muted">📍</span>
+            <select className="bg-pw-deep border border-pw-border rounded-lg px-3 py-1.5 text-xs outline-none cursor-pointer text-pw-text"
+              value={prefs.base_city} onChange={e => savePrefs({ ...prefs, base_city: e.target.value })}>
+              {BASE_LOCATIONS.map(l => <option key={l.id} value={l.city}>{l.label}</option>)}
+            </select>
+            <select className="bg-pw-deep border border-pw-border rounded-lg px-2 py-1.5 text-xs outline-none cursor-pointer text-pw-muted"
+              value={prefs.search_radius} onChange={e => savePrefs({ ...prefs, search_radius: +e.target.value })}>
+              <option value={200}>200km</option>
+              <option value={400}>400km</option>
+              <option value={600}>600km</option>
+              <option value={1000}>1000km</option>
+              <option value={9999}>All India</option>
+            </select>
           </div>
 
-          {/* Diesel Hunter toggle */}
-          <div className="flex items-center gap-3">
-            <button
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-bold border transition-all ${prefs.diesel_hunter ? "border-amber-600 bg-amber-900/30 text-amber-400" : "border-pw-border text-pw-muted"}`}
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Diesel Hunter */}
+            <button className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${prefs.diesel_hunter ? "border-amber-600 bg-amber-900/30 text-amber-400" : "border-pw-border text-pw-muted"}`}
               onClick={() => savePrefs({ ...prefs, diesel_hunter: !prefs.diesel_hunter })}>
-              🏴 Diesel Hunter {prefs.diesel_hunter ? "ON" : "OFF"}
+              🏴 Diesel{prefs.diesel_hunter ? ` (${dieselHunterCount})` : ""}
             </button>
-            {prefs.diesel_hunter && (
-              <>
-                <select className="bg-pw-deep border border-pw-border rounded-lg px-2 py-1.5 text-xs outline-none cursor-pointer text-amber-400"
-                  value={prefs.min_displacement} onChange={e => savePrefs({ ...prefs, min_displacement: +e.target.value })}>
-                  <option value={1500}>1.5L+</option>
-                  <option value={2000}>2.0L+</option>
-                  <option value={2500}>2.5L+</option>
-                </select>
-                <span className="text-[11px] text-amber-400 font-semibold">{dieselHunterCount} matches</span>
-              </>
-            )}
+            {/* Pickup Hunter */}
+            <button className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${prefs.pickup_hunter ? "border-orange-600 bg-orange-900/30 text-orange-400" : "border-pw-border text-pw-muted"}`}
+              onClick={() => savePrefs({ ...prefs, pickup_hunter: !prefs.pickup_hunter })}>
+              🛻 Pickup{prefs.pickup_hunter ? ` (${pickupHunterCount})` : ""}
+            </button>
+            {/* 4x4 Hunter */}
+            <button className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${prefs.fourx4_hunter ? "border-emerald-600 bg-emerald-900/30 text-emerald-400" : "border-pw-border text-pw-muted"}`}
+              onClick={() => savePrefs({ ...prefs, fourx4_hunter: !prefs.fourx4_hunter })}>
+              🏔 4x4{prefs.fourx4_hunter ? ` (${fourx4HunterCount})` : ""}
+            </button>
           </div>
         </div>
       </div>
@@ -352,6 +348,8 @@ export default function Dashboard() {
         const distInfo = getDistanceLabel(dist);
         const disp = getDisplacement(car.model);
         const isDH = isDieselHunterMatch(car, prefs);
+        const isPH = isPickupHunterMatch(car, prefs);
+        const is4H = is4x4HunterMatch(car, prefs);
 
         return (
           <div key={car.id}
@@ -380,6 +378,8 @@ export default function Dashboard() {
                   {car.certified && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-pw-green/10 text-pw-green">✓</span>}
                   {dist < 9999 && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{ color: distInfo.color, backgroundColor: distInfo.color + "15" }}>{dist}km</span>}
                   {isDH && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-900/40 text-amber-400">🏴 {(disp/1000).toFixed(1)}L</span>}
+                  {isPH && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-orange-900/40 text-orange-400">🛻 Pickup</span>}
+                  {is4H && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-900/40 text-emerald-400">🏔 4x4</span>}
                 </div>
                 <div className="flex gap-2.5 mt-2 text-[11px] items-center flex-wrap">
                   <span style={{ color: stage?.color }}>{stage?.icon} {stage?.label}</span>
@@ -466,7 +466,32 @@ export default function Dashboard() {
             ))}
           </div>
           {car.notes && <div className="mt-3 p-3 bg-pw-deep rounded-lg text-xs text-pw-muted leading-relaxed">📝 {car.notes}</div>}
-          {car.link && <a href={car.link} target="_blank" rel="noreferrer" className="text-pw-accent text-xs mt-2 inline-block">🔗 View listing →</a>}
+
+          {/* Seller + Listing Actions */}
+          <div className="flex flex-wrap gap-3 mt-3 items-center">
+            {car.link && (
+              <a href={car.link} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-pw-accent text-pw-bg text-xs font-bold hover:brightness-110 transition-all">
+                🔗 View Original Listing
+              </a>
+            )}
+            {car.seller_name && (
+              <div className="flex items-center gap-2 px-3 py-2 bg-pw-deep rounded-lg border border-pw-border">
+                <span className="text-xs text-pw-muted">👤</span>
+                <span className="text-xs font-semibold">{car.seller_name}</span>
+                {car.seller_type && <span className="text-[10px] text-pw-muted">({car.seller_type})</span>}
+              </div>
+            )}
+            {car.seller_phone && (
+              <a href={`tel:${car.seller_phone}`}
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-pw-green/10 border border-pw-green/30 text-pw-green text-xs font-bold">
+                📞 {car.seller_phone}
+              </a>
+            )}
+            {!car.seller_phone && !car.seller_name && car.source && (
+              <span className="text-[11px] text-pw-muted">No seller contact — check original listing on {car.source}</span>
+            )}
+          </div>
         </div>
 
         {/* Depreciation + Trust */}
@@ -718,7 +743,7 @@ export default function Dashboard() {
       <div className="bg-pw-card rounded-2xl p-6 max-w-xl w-full max-h-[85vh] overflow-auto border border-pw-border" onClick={e => e.stopPropagation()}>
         <h3 className="text-pw-accent font-bold text-lg mb-4">Add a Car</h3>
         <div className="grid grid-cols-2 gap-3">
-          {[["model", "Model *", "text", "Toyota Fortuner 2.8 AT"], ["variant", "Variant", "text", "2.8L Diesel AT 4x4"], ["year", "Year", "number", ""], ["km", "KM", "number", ""], ["price", "Price ₹", "number", ""], ["color", "Color", "text", ""], ["city", "City", "text", "Chennai"], ["link", "URL", "text", ""]].map(([k, l, t, p]) => (
+          {[["model", "Model *", "text", "Toyota Fortuner 2.8 AT"], ["variant", "Variant", "text", "2.8L Diesel AT 4x4"], ["year", "Year", "number", ""], ["km", "KM", "number", ""], ["price", "Price ₹", "number", ""], ["color", "Color", "text", ""], ["city", "City", "text", "Chennai"], ["link", "Listing URL", "text", "https://..."], ["seller_name", "Seller Name", "text", ""], ["seller_phone", "Seller Phone", "text", "+91..."]].map(([k, l, t, p]) => (
             <div key={k}>
               <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">{l}</label>
               <input className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-sm w-full outline-none" type={t} placeholder={p} value={nc[k]} onChange={e => setNc({ ...nc, [k]: e.target.value })} />

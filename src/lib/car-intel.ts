@@ -31,6 +31,15 @@ export const MODEL_INTEL: Record<string, {
   "Tata Safari": { reliability: 6, resale: 6, parts: 7, community: 6, modPotential: 5, newPriceRange: [1600000, 2800000], knownIssues: ["Same diesel as Harrier", "Heavy in city", "3rd row tight", "Panel gaps"], strengths: ["Captain seats are luxurious", "170bhp diesel strong", "ADAS on higher trims", "Good highway cruiser"], dieselBanRisk: true, avgServiceCost: "₹5K–8K/service", inspectSpecial: ["Check captain seat mechanisms", "Test 3rd row folding", "Inspect diesel exhaust system", "Full ADAS sensor check"] },
   "Toyota Innova Hycross": { reliability: 9, resale: 9, parts: 9, community: 7, modPotential: 3, newPriceRange: [1900000, 3100000], knownIssues: ["No diesel option", "CVT can feel rubber-bandy", "2nd row access tight vs Crysta"], strengths: ["Strong hybrid 23+ kmpl", "TNGA platform", "Quieter than Crysta", "Excellent resale expected"], dieselBanRisk: false, avgServiceCost: "₹5K–8K/service", inspectSpecial: ["Check hybrid battery health", "Test CVT at low speeds", "Inspect powered ottoman seats", "Verify OTA update history"] },
   "Toyota Hyryder": { reliability: 8, resale: 8, parts: 8, community: 6, modPotential: 3, newPriceRange: [1100000, 2000000], knownIssues: ["Strong hybrid has no manual", "Boot space average", "Cabin feels basic vs Creta"], strengths: ["Toyota badge = trust + resale", "Strong hybrid 27+ kmpl", "AWD option", "Reliable hybrid tech"], dieselBanRisk: false, avgServiceCost: "₹3.5K–5.5K/service", inspectSpecial: ["Check hybrid battery health", "Test EV mode engagement", "Inspect AWD coupling", "Verify Toyota service stamps"] },
+  // ─── PICKUP TRUCKS ───
+  "Isuzu D-Max": { reliability: 8, resale: 7, parts: 5, community: 5, modPotential: 8, newPriceRange: [1000000, 2500000], knownIssues: ["Limited service network in India", "Ride is truck-harsh", "Cabin feels utilitarian", "Infotainment is basic"], strengths: ["1.9L/3.0L diesel is torquey and proven globally", "True body-on-frame pickup", "Massive payload capacity", "4x4 with locking diff on V-Cross", "Bulletproof drivetrain"], dieselBanRisk: true, avgServiceCost: "₹5K–8K/service", inspectSpecial: ["Check chassis for commercial use wear", "Inspect leaf springs for sagging", "Test 4WD shift-on-fly if equipped", "Check bed liner and tailgate hinges", "Verify service history (limited network = often skipped)"] },
+  "Isuzu V-Cross": { reliability: 8, resale: 7, parts: 5, community: 5, modPotential: 9, newPriceRange: [2000000, 2700000], knownIssues: ["Expensive for India", "Ride quality harsh unladen", "Limited dealer network", "Parts take time"], strengths: ["3.0L diesel 163bhp/360Nm", "Proper 4x4 with diff lock", "1 tonne payload", "Global platform proven in Australia/Thailand", "Massive mod potential"], dieselBanRisk: true, avgServiceCost: "₹6K–10K/service", inspectSpecial: ["Check 4WD transfer case operation", "Inspect diff lock engagement", "Look for tow bar stress marks on chassis", "Check turbo boost gauge readings", "Inspect bed for load damage"] },
+  "Toyota Hilux": { reliability: 9, resale: 8, parts: 7, community: 6, modPotential: 9, newPriceRange: [3000000, 3800000], knownIssues: ["Very expensive for India market", "Ride is bouncy unladen", "Turning circle is large", "Fuel economy 8-10 kmpl"], strengths: ["2.8L diesel 204bhp/500Nm — same as Fortuner", "Toyota reliability", "Globally proven indestructible platform", "4x4 with locking rear diff", "Best resale of any pickup"], dieselBanRisk: true, avgServiceCost: "₹8K–12K/service", inspectSpecial: ["Check for fleet/commercial use", "Inspect suspension for lifted/modified setups", "Test 4WD and diff lock", "Check bed for heavy load damage", "Verify if mining/construction use"] },
+  "Tata Yodha": { reliability: 6, resale: 5, parts: 8, community: 4, modPotential: 5, newPriceRange: [800000, 1200000], knownIssues: ["Commercial vehicle DNA", "Very basic cabin", "Harsh ride", "Not a lifestyle pickup"], strengths: ["Affordable diesel pickup", "2.0L diesel with decent torque", "Tata service network wide", "Payload champion"], dieselBanRisk: true, avgServiceCost: "₹3K–5K/service", inspectSpecial: ["Check for commercial overloading damage", "Inspect chassis for cracks", "Test clutch (often abused)", "Check cab mount bushings"] },
+  "Tata Xenon": { reliability: 6, resale: 4, parts: 7, community: 4, modPotential: 5, newPriceRange: [700000, 1100000], knownIssues: ["Discontinued — parts getting scarce", "Very basic by modern standards", "Underpowered", "Ride quality poor"], strengths: ["Cheap to buy used", "2.2L diesel", "Simple to maintain", "Decent off-road"], dieselBanRisk: true, avgServiceCost: "₹3K–5K/service", inspectSpecial: ["Check for commercial fleet use", "Inspect suspension thoroughly", "Verify engine hasn't been overworked", "Check for rust under bed"] },
+  "Mahindra Bolero Camper": { reliability: 7, resale: 6, parts: 9, community: 6, modPotential: 6, newPriceRange: [900000, 1300000], knownIssues: ["Very basic commercial vehicle", "Harsh ride", "No modern features", "Cab is cramped"], strengths: ["Bulletproof mHawk diesel", "Mahindra service everywhere", "True workhorse", "Simple mechanicals"], dieselBanRisk: true, avgServiceCost: "₹3K–5K/service", inspectSpecial: ["Check for commercial abuse", "Inspect leaf springs", "Test 4WD if equipped", "Check for welding repairs on chassis"] },
+  "Force Gurkha": { reliability: 6, resale: 6, parts: 5, community: 7, modPotential: 9, newPriceRange: [1500000, 1800000], knownIssues: ["Build quality inconsistent", "Very utilitarian cabin", "Fuel economy poor", "NVH is high"], strengths: ["Mercedes-derived 2.6L diesel", "Proper 4x4 with low range + diff locks", "Extreme off-road capability", "Unique military-inspired design"], dieselBanRisk: true, avgServiceCost: "₹5K–9K/service", inspectSpecial: ["Check all diff locks engage properly", "Inspect for off-road damage underneath", "Test low range transfer case", "Check for water ingress"] },
+  "Mahindra Thar ROXX": { reliability: 7, resale: 8, parts: 8, community: 9, modPotential: 8, newPriceRange: [1300000, 2300000], knownIssues: ["New model — long-term unknown", "Waiting period was huge", "Some early batch issues reported", "Heavier than 3-door"], strengths: ["5-door practical Thar", "2.2L diesel 175bhp", "4x4 with crawl mode", "Modern cabin with ADAS", "Best of both worlds"], dieselBanRisk: true, avgServiceCost: "₹5K–8K/service", inspectSpecial: ["Check for early batch build issues", "Test ADAS calibration", "Verify 4x4 crawl mode", "Check door alignment (new platform)"] },
 };
 
 // ─── SOURCE TRUST TIERS ───
@@ -42,15 +51,30 @@ export const SOURCE_TRUST: Record<string, { tier: number; label: string; premium
   "Maruti True Value": { tier: 2, label: "🟢 OEM Certified", premiumPct: 6, desc: "376-point digital evaluation" },
   "Mahindra First Choice": { tier: 2, label: "🟢 OEM Certified", premiumPct: 5, desc: "118-point inspection" },
   "Honda Auto Terrace": { tier: 2, label: "🟢 OEM Certified", premiumPct: 5, desc: "Honda pre-owned program" },
+  "Isuzu Certified": { tier: 2, label: "🟢 OEM Certified", premiumPct: 5, desc: "Isuzu pre-owned with warranty" },
   "Cars24": { tier: 3, label: "🟡 Platform", premiumPct: 10, desc: "300-point inspection, ~10% premium" },
   "Spinny": { tier: 3, label: "🟡 Platform", premiumPct: 12, desc: "Fixed-price, 5-day return, highest premium" },
   "CarDekho": { tier: 3, label: "🟡 Platform", premiumPct: 5, desc: "Aggregator" },
   "CarTrade": { tier: 3, label: "🟡 Platform", premiumPct: 5, desc: "Multi-city dealer network" },
-  "Team-BHP": { tier: 2, label: "🟢 Enthusiast", premiumPct: -3, desc: "Well-maintained enthusiast cars" },
-  "Independent Dealer": { tier: 4, label: "🟠 Dealer", premiumPct: 0, desc: "Negotiate hard, inspect harder" },
+  "Droom": { tier: 3, label: "🟡 Platform", premiumPct: 3, desc: "ECO inspection, Orange Book Value" },
+  "CarWale": { tier: 3, label: "🟡 Platform", premiumPct: 4, desc: "Dealer listings aggregator" },
+  // Forums & Enthusiast
+  "Team-BHP": { tier: 2, label: "🟢 Enthusiast", premiumPct: -3, desc: "Well-maintained enthusiast cars, best deals" },
+  "4x4India": { tier: 2, label: "🟢 Enthusiast", premiumPct: -5, desc: "Off-road community — 4x4/pickup specialists" },
+  "Xbhp": { tier: 2, label: "🟢 Enthusiast", premiumPct: -3, desc: "Automotive enthusiast forum" },
+  "Rushlane Forum": { tier: 3, label: "🟡 Forum", premiumPct: -2, desc: "Auto news forum with classifieds" },
+  "Indian Offroaders": { tier: 2, label: "🟢 Enthusiast", premiumPct: -5, desc: "4x4 and off-road community — gold for pickup trucks" },
+  // Marketplaces
   "OLX": { tier: 5, label: "🔴 Marketplace", premiumPct: -8, desc: "Cheapest but zero safety net" },
-  "Facebook": { tier: 5, label: "🔴 Marketplace", premiumPct: -10, desc: "Community deals, high variance" },
+  "Facebook Marketplace": { tier: 5, label: "🔴 Marketplace", premiumPct: -10, desc: "Widest reach, zero vetting" },
+  "Facebook Group": { tier: 3, label: "🟡 Community", premiumPct: -5, desc: "Model-specific groups — knowledgeable sellers" },
+  "Instagram": { tier: 5, label: "🔴 Social", premiumPct: -5, desc: "DM-based deals, no protection" },
+  "Quikr": { tier: 5, label: "🔴 Marketplace", premiumPct: -8, desc: "Declining but still has listings" },
+  // Direct
+  "Independent Dealer": { tier: 4, label: "🟠 Dealer", premiumPct: 0, desc: "Negotiate hard, inspect harder" },
   "Direct Seller": { tier: 4, label: "🟠 Direct", premiumPct: -5, desc: "Cut the middleman" },
+  "Army Canteen / Govt Auction": { tier: 3, label: "🟡 Auction", premiumPct: -15, desc: "Government/military disposals — great condition, low price" },
+  "Bank Auction": { tier: 4, label: "🟠 Auction", premiumPct: -20, desc: "Repossessed vehicles — cheap but no warranty" },
   "New (Showroom)": { tier: 0, label: "⚪ New Car", premiumPct: 0, desc: "Baseline comparison" },
 };
 
@@ -206,6 +230,29 @@ export function getDisplacement(model: string): number {
   return key ? ENGINE_DISPLACEMENT[key] : 0;
 }
 
+// ─── VEHICLE CATEGORIES ───
+const PICKUP_MODELS = ["Isuzu D-Max", "Isuzu V-Cross", "Toyota Hilux", "Tata Yodha", "Tata Xenon", "Mahindra Bolero Camper", "Mahindra Pik-Up", "Force Trax"];
+const FOUR_BY_FOUR_MODELS = ["Fortuner", "Thar", "Jimny", "Gurkha", "Scorpio N Z8L", "XUV700 AX7", "Hilux", "V-Cross", "D-Max V-Cross", "Grand Vitara.*AWD", "Hyryder.*AWD", "Compass.*4x4"];
+
+export function isPickup(model: string): boolean {
+  return PICKUP_MODELS.some(p => model?.includes(p));
+}
+
+export function is4x4Capable(car: any): boolean {
+  if (car.drivetrain === "4WD" || car.drivetrain === "AWD") return true;
+  return FOUR_BY_FOUR_MODELS.some(p => new RegExp(p, "i").test(car.model || ""));
+}
+
+export function isPickupHunterMatch(car: any, prefs: any): boolean {
+  if (!prefs.pickup_hunter) return false;
+  return isPickup(car.model);
+}
+
+export function is4x4HunterMatch(car: any, prefs: any): boolean {
+  if (!prefs.fourx4_hunter) return false;
+  return is4x4Capable(car);
+}
+
 export function isDieselHunterMatch(car: any, prefs: any): boolean {
   if (!prefs.diesel_hunter) return false;
   if (car.fuel !== "Diesel") return false;
@@ -261,6 +308,10 @@ export function scoreCar(car: any, prefs: any): number {
 
   // Diesel hunter bonus
   if (prefs.diesel_hunter && isDieselHunterMatch(car, prefs)) s += 15;
+  // Pickup hunter bonus
+  if (prefs.pickup_hunter && isPickupHunterMatch(car, prefs)) s += 15;
+  // 4x4 hunter bonus
+  if (prefs.fourx4_hunter && is4x4HunterMatch(car, prefs)) s += 12;
 
   return Math.max(0, Math.min(100, s));
 }
@@ -321,6 +372,19 @@ export function generateInsights(car: any, prefs: any) {
     if (car.fuel === "Diesel" && disp > 0 && disp < 2000) {
       whyNot.push(`Diesel but only ${(disp / 1000).toFixed(1)}L (${disp}cc) — below your 2.0L+ preference`);
     }
+  }
+
+  // Pickup hunter insights
+  if (prefs.pickup_hunter && isPickup(car.model)) {
+    whyBuy.push("🛻 Pickup Hunter match — true pickup truck with bed/payload capability");
+  }
+
+  // 4x4 hunter insights
+  if (prefs.fourx4_hunter && is4x4Capable(car)) {
+    whyBuy.push("🏔 4x4/AWD Hunter match — off-road capable drivetrain");
+  }
+  if (prefs.fourx4_hunter && !is4x4Capable(car) && car.drivetrain === "2WD") {
+    whyNot.push("2WD only — no 4x4/AWD capability");
   }
 
   if (found) {

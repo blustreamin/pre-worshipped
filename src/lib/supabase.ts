@@ -29,6 +29,10 @@ export interface Car {
   stage: string;
   scraped_at: string;
   created_at: string;
+  // Seller contact
+  seller_name: string;
+  seller_phone: string;
+  seller_type: string; // "dealer" | "individual" | "oem" | "unknown"
 }
 
 export interface Preferences {
@@ -46,9 +50,11 @@ export interface Preferences {
   // Location
   base_city: string;
   search_radius: number;
-  // Diesel Hunter
+  // Hunters
   diesel_hunter: boolean;
   min_displacement: number;
+  pickup_hunter: boolean;
+  fourx4_hunter: boolean;
 }
 
 export interface AiAnalysis {
