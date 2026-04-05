@@ -72,6 +72,20 @@ export default function Dashboard() {
   const [checklists, setChecklists] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+
+  // Theme effect
+  useEffect(() => {
+    const saved = localStorage.getItem("pw-theme") as "dark" | "light" | null;
+    if (saved) { setTheme(saved); document.documentElement.classList.toggle("light", saved === "light"); }
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === "dark" ? "light" : "dark";
+    setTheme(next);
+    document.documentElement.classList.toggle("light", next === "light");
+    localStorage.setItem("pw-theme", next);
+  };
 
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500); };
 
@@ -350,7 +364,7 @@ export default function Dashboard() {
               <div className="flex-1 min-w-0">
                 <div className="flex justify-between flex-wrap gap-1.5">
                   <div>
-                    <div className="text-[15px] font-bold text-white">{car.model}</div>
+                    <div className="text-[15px] font-bold text-pw-text font-extrabold">{car.model}</div>
                     <div className="text-[11px] text-pw-muted mt-0.5">{car.year} · {car.city} · {car.source}</div>
                   </div>
                   <div className="text-right">
@@ -416,7 +430,7 @@ export default function Dashboard() {
         <div className="bg-pw-card rounded-xl border border-pw-border p-5 mb-3.5">
           <div className="flex justify-between flex-wrap gap-3">
             <div>
-              <h2 className="text-[22px] font-bold text-white">{car.model}</h2>
+              <h2 className="text-[22px] font-bold text-pw-text font-extrabold">{car.model}</h2>
               <div className="text-pw-muted text-xs mt-1">{car.variant} · {car.year} · {car.city}</div>
               <div className="flex gap-1.5 mt-3 flex-wrap">
                 {SCOUT_STAGES.map(s => (
@@ -700,7 +714,7 @@ export default function Dashboard() {
 
   // ─── ADD MODAL ───
   const renderAddModal = () => !showAdd ? null : (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
+    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
       <div className="bg-pw-card rounded-2xl p-6 max-w-xl w-full max-h-[85vh] overflow-auto border border-pw-border" onClick={e => e.stopPropagation()}>
         <h3 className="text-pw-accent font-bold text-lg mb-4">Add a Car</h3>
         <div className="grid grid-cols-2 gap-3">
@@ -744,17 +758,22 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-r from-pw-deep via-[#121728] to-[#0e1520] px-5 py-4 border-b border-pw-border sticky top-0 z-50">
+      <div className="px-5 py-4 border-b border-pw-border sticky top-0 z-50" style={{ background: "var(--deep)" }}>
         <div className="max-w-4xl mx-auto flex justify-between items-center">
           <div>
             <h1 className="text-xl font-extrabold text-pw-accent tracking-tight">Pre-Worshipped</h1>
             <div className="text-[10px] text-pw-muted uppercase tracking-[2px] mt-0.5">Car Intelligence · {cars.length} tracked</div>
           </div>
-          <div className="flex gap-1.5">
+          <div className="flex gap-1.5 items-center">
             {[["board", "🏠 Scout"], ["prefs", "⚙️ Prefs"]].map(([v, l]) => (
               <button key={v} className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${(view === v || (v === "board" && view === "detail")) ? "border-pw-accent text-pw-accent bg-pw-accent/10" : "border-pw-border text-pw-muted"}`}
                 onClick={() => setView(v as any)}>{l}</button>
             ))}
+            <button onClick={toggleTheme}
+              className="px-2.5 py-1.5 rounded-lg text-sm border border-pw-border hover:border-pw-accent transition-all ml-1"
+              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+              {theme === "dark" ? "☀️" : "🌙"}
+            </button>
           </div>
         </div>
       </div>

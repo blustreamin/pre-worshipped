@@ -12,7 +12,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <head>
         <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
       </head>
-      <body className="min-h-full bg-[#08090d] text-[#ddd8cf]" style={{ fontFamily: "'DM Sans', system-ui, sans-serif" }}>
+      <body className="min-h-full" style={{ fontFamily: "'DM Sans', system-ui, sans-serif", background: "var(--bg)", color: "var(--text)" }}>
         {children}
       </body>
     </html>
