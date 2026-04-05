@@ -74,6 +74,8 @@ export default function Dashboard() {
   const [checklists, setChecklists] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
   const [seeding, setSeeding] = useState(false);
+  const [scraping, setScraping] = useState(false);
+  const [scrapeResults, setScrapeResults] = useState<any>(null);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
 
   // Theme effect
@@ -150,6 +152,34 @@ export default function Dashboard() {
       flash("Failed to seed — is Supabase configured?");
     }
     setSeeding(false);
+  }
+
+  // ─── Run scraper ───
+  async function runScrape(sources?: string[]) {
+    setScraping(true);
+    flash("🕷 Scraping started...");
+    try {
+      const resp = await fetch("/api/scrape", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sources: sources || [],
+          city: prefs.base_city?.toLowerCase() || "chennai",
+          budgetMax: prefs.budget_max || 2500000,
+        }),
+      });
+      const data = await resp.json();
+      setScrapeResults(data);
+      if (data.success) {
+        flash(`🕷 Found ${data.total_found} cars from ${data.results?.length || 0} sources`);
+        await loadData(); // Reload from DB
+      } else {
+        flash(`Scrape error: ${data.error}`);
+      }
+    } catch (e: any) {
+      flash(`Scrape failed: ${e.message}`);
+    }
+    setScraping(false);
   }
 
   // ─── Save preferences ───
@@ -336,6 +366,10 @@ export default function Dashboard() {
         </select>
         <button className="bg-pw-accent text-pw-bg px-4 py-2 rounded-lg text-xs font-bold hover:brightness-110"
           onClick={() => setShowAdd(true)}>+ Add</button>
+        <button className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${scraping ? "border-pw-green text-pw-green animate-pulse" : "border-pw-purple text-pw-purple hover:bg-pw-purple/10"}`}
+          onClick={() => runScrape()} disabled={scraping}>
+          {scraping ? "🕷 Scraping..." : "🕷 Scrape"}
+        </button>
       </div>
 
       {/* Car list */}
