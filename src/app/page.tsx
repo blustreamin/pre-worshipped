@@ -85,6 +85,17 @@ const DP: Preferences = {
   pickup_hunter: true, fourx4_hunter: true,
 };
 
+// ─── Loading step component for search animation ───
+function LoadingStep({ delay, text }: { delay: number; text: string }) {
+  const [visible, setVisible] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setVisible(true), delay * 1000);
+    return () => clearTimeout(t);
+  }, [delay]);
+  if (!visible) return null;
+  return <div className="text-xs animate-pulse" style={{ color: "var(--muted)" }}>{text}</div>;
+}
+
 export default function Dashboard() {
   const [cars, setCars] = useState<any[]>([]);
   const [prefs, setPrefs] = useState<Preferences>(DP);
@@ -740,20 +751,49 @@ export default function Dashboard() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "#0009" }} onClick={() => !finding && setShowFinder(false)}>
           <div className="rounded-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-auto" style={{ background: "var(--card)", border: "1px solid var(--border)" }} onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-bold mb-1" style={{ color: "var(--accent)" }}>🔍 Find Real Listings</h3>
-            <p className="text-xs mb-4" style={{ color: "var(--muted)" }}>AI searches Cars24, OLX, Spinny, Team-BHP, Facebook & more for real cars with actual links</p>
+            <p className="text-xs mb-4" style={{ color: "var(--muted)" }}>AI searches Cars24, OLX, Spinny, Team-BHP, Facebook & more</p>
+
+            {/* Budget + City controls */}
+            <div className="grid grid-cols-3 gap-2 mb-4">
+              <div>
+                <label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>City</label>
+                <select value={prefs.base_city} onChange={e => savePrefs({...prefs, base_city: e.target.value})}
+                  className="w-full px-2 py-2 rounded-xl text-xs outline-none cursor-pointer"
+                  style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                  {BASE_LOCATIONS.map(l => <option key={l.id} value={l.city}>{l.label}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Min ₹</label>
+                <select value={prefs.budget_min} onChange={e => savePrefs({...prefs, budget_min: +e.target.value})}
+                  className="w-full px-2 py-2 rounded-xl text-xs outline-none cursor-pointer"
+                  style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                  {[300000,500000,800000,1000000,1200000,1500000].map(v => <option key={v} value={v}>₹{(v/100000).toFixed(0)}L</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Max ₹</label>
+                <select value={prefs.budget_max} onChange={e => savePrefs({...prefs, budget_max: +e.target.value})}
+                  className="w-full px-2 py-2 rounded-xl text-xs outline-none cursor-pointer"
+                  style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                  {[1000000,1500000,1600000,2000000,2500000,3000000,3500000,5000000].map(v => <option key={v} value={v}>₹{(v/100000).toFixed(0)}L</option>)}
+                </select>
+              </div>
+            </div>
 
             {/* Quick search buttons */}
             <div className="flex flex-wrap gap-2 mb-4">
               {[
-                { label: "🏴 Diesel 2L+ SUVs", q: "used diesel SUV 2 litre above", m: ["Fortuner", "Thar", "XUV700", "Scorpio N", "Safari", "Harrier"] },
-                { label: "🛻 Pickup Trucks", q: "used pickup truck", m: ["Isuzu D-Max", "Isuzu V-Cross", "Toyota Hilux", "Tata Yodha"] },
-                { label: "🏔 4x4 Vehicles", q: "used 4x4 SUV", m: ["Fortuner 4x4", "Thar 4x4", "Jimny", "Gurkha", "Scorpio N 4x4"] },
-                { label: "💰 Under 10L Diesel", q: "used diesel car under 10 lakh", m: [] },
-                { label: "🚗 Enthusiast Cars", q: "used enthusiast car modified", m: ["Octavia RS", "Thar modified", "Ecosport Ecoboost"] },
+                { label: "🏴 Diesel 2L+ SUVs", q: "used diesel SUV 2 litre engine above", m: ["Fortuner", "Thar", "XUV700", "Scorpio N", "Safari", "Harrier"] },
+                { label: "🛻 Pickup Trucks", q: "used pickup truck 4x4", m: ["Isuzu D-Max", "Isuzu V-Cross", "Toyota Hilux", "Tata Yodha"] },
+                { label: "🏔 4x4 / AWD", q: "used 4x4 AWD SUV", m: ["Fortuner 4x4", "Thar 4x4", "Jimny", "Gurkha", "Scorpio N 4x4"] },
+                { label: "💰 Under ₹10L Diesel", q: "used diesel car under 10 lakh", m: [] },
+                { label: "🏁 Enthusiast Mods", q: "used modified enthusiast car", m: ["Octavia RS", "Thar modified", "Ecosport Ecoboost"] },
+                { label: "🏠 Local Deals", q: `used car for sale by owner ${prefs.base_city}`, m: [] },
               ].map(s => (
                 <button key={s.label} disabled={finding} onClick={() => { setFindQuery(s.q); setFindModels(s.m); runFind(s.q, s.m); }}
                   className="px-3 py-2 rounded-xl text-xs font-semibold border transition-all hover:shadow-md"
-                  style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                  style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)", opacity: finding ? 0.5 : 1 }}>
                   {s.label}
                 </button>
               ))}
@@ -761,32 +801,58 @@ export default function Dashboard() {
 
             {/* Custom search */}
             <div className="mb-4">
-              <label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Or search anything</label>
+              <label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Or type anything</label>
               <div className="flex gap-2">
-                <input value={findQuery} onChange={e => setFindQuery(e.target.value)} placeholder="e.g. white Fortuner 4x4 under 30 lakh Chennai"
+                <input value={findQuery} onChange={e => setFindQuery(e.target.value)} placeholder="e.g. white Fortuner 4x4 under 30 lakh"
                   className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}
-                  onKeyDown={e => e.key === "Enter" && !finding && runFind()} />
+                  onKeyDown={e => e.key === "Enter" && !finding && runFind()} disabled={finding} />
                 <button onClick={() => runFind()} disabled={finding || !findQuery} className="px-5 py-2.5 rounded-xl text-sm font-bold"
-                  style={{ background: finding ? "#16a34a" : "var(--accent)", color: "#fff" }}>
-                  {finding ? "⏳" : "Go"}
+                  style={{ background: finding ? "#16a34a" : "var(--accent)", color: "#fff", opacity: (finding || !findQuery) ? 0.6 : 1 }}>
+                  {finding ? "⏳" : "Search"}
                 </button>
               </div>
             </div>
 
-            {/* Search context */}
-            <div className="text-[11px] p-3 rounded-xl mb-4" style={{ background: "var(--deep)", color: "var(--muted)" }}>
-              Searching in: <strong>{prefs.base_city}</strong> · Budget: <strong>₹{(prefs.budget_min/100000).toFixed(0)}L – ₹{(prefs.budget_max/100000).toFixed(0)}L</strong>
-              {finding && <div className="mt-2 text-xs font-semibold animate-pulse" style={{ color: "var(--accent)" }}>AI is searching across platforms... this takes 15-30 seconds</div>}
-            </div>
-
-            {/* Results */}
-            {lastFind && (
-              <div className="text-xs" style={{ color: lastFind.found > 0 ? "#16a34a" : "var(--muted)" }}>
-                {lastFind.found > 0 ? `✅ Found ${lastFind.found} listings — added to your dashboard` : lastFind.error || "No results found. Try different search terms."}
+            {/* Loading animation */}
+            {finding && (
+              <div className="p-4 rounded-xl mb-4" style={{ background: "var(--deep)", border: "1px solid var(--border)" }}>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="w-5 h-5 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+                  <span className="text-sm font-semibold" style={{ color: "var(--accent)" }}>AI is hunting for deals...</span>
+                </div>
+                <div className="space-y-2">
+                  {[
+                    { t: 0, text: "🔍 Searching Cars24, OLX, Spinny..." },
+                    { t: 5, text: "📋 Checking CarDekho, CarTrade, Droom..." },
+                    { t: 10, text: "🏆 Scanning Team-BHP classifieds..." },
+                    { t: 15, text: "📱 Checking Facebook Marketplace..." },
+                    { t: 20, text: "💰 Comparing prices & extracting details..." },
+                    { t: 25, text: "✅ Finalizing results..." },
+                  ].map((step, i) => (
+                    <LoadingStep key={i} delay={step.t} text={step.text} />
+                  ))}
+                </div>
               </div>
             )}
 
-            {!finding && <button onClick={() => setShowFinder(false)} className="mt-4 text-xs underline" style={{ color: "var(--muted)" }}>Close</button>}
+            {/* Results */}
+            {lastFind && !finding && (
+              <div className="p-3 rounded-xl mb-3" style={{ background: lastFind.found > 0 ? "#16a34a15" : "var(--deep)", border: `1px solid ${lastFind.found > 0 ? "#16a34a40" : "var(--border)"}` }}>
+                {lastFind.found > 0 ? (
+                  <div>
+                    <div className="text-sm font-bold" style={{ color: "#16a34a" }}>✅ Found {lastFind.found} listings!</div>
+                    <div className="text-xs mt-1" style={{ color: "var(--muted)" }}>Added to your dashboard. Close this to see them.</div>
+                  </div>
+                ) : (
+                  <div className="text-xs" style={{ color: "var(--muted)" }}>{lastFind.error || "No results. Try broader search terms or a different city."}</div>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              {!finding && <button onClick={() => { setShowFinder(false); setLastFind(null); }} className="text-xs font-semibold px-4 py-2 rounded-xl" style={{ background: "var(--deep)", color: "var(--text)", border: "1px solid var(--border)" }}>Close</button>}
+              {lastFind && lastFind.found > 0 && !finding && <button onClick={() => { setShowFinder(false); setLastFind(null); }} className="text-xs font-bold px-4 py-2 rounded-xl" style={{ background: "var(--accent)", color: "#fff" }}>View Results →</button>}
+            </div>
           </div>
         </div>
       )}

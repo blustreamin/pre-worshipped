@@ -33,9 +33,10 @@ CRITICAL RULES:
 - Price must be in Indian Rupees (full number, not lakhs)
 - Include the actual listing URL - this is the most important field
 - Search across: Cars24, OLX, Spinny, CarDekho, Facebook Marketplace, Team-BHP classifieds, Quikr, CarTrade, Droom
-- For each search, try to find 5-10 distinct listings
+- For each search, try to find 20-25 distinct listings from DIFFERENT platforms
 - If you find a listing on a forum or marketplace, include the seller name if visible
 - Return ONLY the JSON array, no other text
+- Cast a wide net: search multiple platforms and cities nearby
 
 Respond with a JSON array of car objects. Nothing else.`;
 
@@ -60,8 +61,8 @@ export async function POST(req: NextRequest) {
     const modelStr = models.length > 0 ? models.join(", ") : "";
 
     const userPrompt = modelStr
-      ? `Find used ${modelStr} cars for sale in ${city} and nearby cities. Budget: ₹${budgetMinL}L to ₹${budgetMaxL}L. Search on Cars24, OLX, Spinny, CarDekho, Team-BHP classifieds, Facebook marketplace, and any other platform. Find at least 8 real listings with actual URLs.`
-      : `Find used cars matching: "${query}" in ${city} and nearby cities. Budget: ₹${budgetMinL}L to ₹${budgetMaxL}L. Search on Cars24, OLX, Spinny, CarDekho, Team-BHP classifieds, Facebook marketplace, and any other platform. Find at least 8 real listings with actual URLs.`;
+      ? `Find used ${modelStr} cars for sale in ${city} and nearby cities (within 600km). Budget: ₹${budgetMinL}L to ₹${budgetMaxL}L. Search across Cars24, OLX, Spinny, CarDekho, Team-BHP classifieds, Facebook marketplace, Droom, CarTrade, and any other platform. I need at least 20 real listings with actual clickable URLs. Search multiple platforms to get variety.`
+      : `Find used cars matching: "${query}" for sale in ${city} and nearby cities (within 600km). Budget: ₹${budgetMinL}L to ₹${budgetMaxL}L. Search across Cars24, OLX, Spinny, CarDekho, Team-BHP classifieds, Facebook marketplace, Droom, CarTrade, and any other platform. I need at least 20 real listings with actual clickable URLs. Search multiple platforms to get variety.`;
 
     console.log(`[AI Finder] Query: ${userPrompt}`);
 
@@ -74,7 +75,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
-        max_tokens: 4096,
+        max_tokens: 8192,
         system: SYSTEM_PROMPT,
         tools: [{ type: "web_search_20250305", name: "web_search" }],
         messages: [{ role: "user", content: userPrompt }],
