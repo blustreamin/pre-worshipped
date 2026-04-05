@@ -99,10 +99,14 @@ export default function Dashboard() {
   const [fStage, setFStage] = useState("All");
   const [fHunter, setFHunter] = useState("All"); // All | diesel | pickup | 4x4
   const [showAdd, setShowAdd] = useState(false);
+  const [showFinder, setShowFinder] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
   const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
-  const [scraping, setScraping] = useState(false);
+  const [finding, setFinding] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [findModels, setFindModels] = useState<string[]>([]);
+  const [lastFind, setLastFind] = useState<any>(null);
   const [theme, setTheme] = useState<"dark" | "light">("light");
 
   const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000); };
@@ -170,15 +174,35 @@ export default function Dashboard() {
     setAiLoading(p => ({ ...p, [car.id]: false }));
   };
 
-  const runScrape = async () => {
-    setScraping(true); flash("Scraping...");
+  const runFind = async (query?: string, models?: string[]) => {
+    setFinding(true);
+    flash("🔍 AI is searching for real listings...");
     try {
-      const r = await fetch("/api/scrape", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ city: prefs.base_city?.toLowerCase() || "chennai", budgetMax: prefs.budget_max }) });
+      const r = await fetch("/api/find", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          query: query || findQuery || `used ${prefs.fuel_pref?.join(" or ")} car`,
+          city: prefs.base_city?.toLowerCase() || "chennai",
+          budgetMin: prefs.budget_min,
+          budgetMax: prefs.budget_max,
+          models: models || findModels,
+        }),
+      });
       const d = await r.json();
-      if (d.success) { flash(`Found ${d.total_found} cars`); await loadData(); }
-      else flash(`Error: ${d.error}`);
-    } catch { flash("Scrape failed"); }
-    setScraping(false);
+      setLastFind(d);
+      if (d.success && d.found > 0) {
+        flash(`🎯 Found ${d.found} real listings!`);
+        await loadData();
+      } else if (d.error?.includes("ANTHROPIC_API_KEY")) {
+        flash("⚠️ Add ANTHROPIC_API_KEY in Vercel env vars");
+      } else {
+        flash(`No listings found. Try different search terms.`);
+      }
+    } catch (e: any) {
+      flash(`Search failed: ${e.message}`);
+    }
+    setFinding(false);
   };
 
   const emptyNew = { model: "", variant: "", year: 2023, km: 0, price: 0, fuel: "Diesel", transmission: "Manual", body_type: "SUV", drivetrain: "2WD", owners: 1, reg_state: "TN", city: "Chennai", color: "", source: "Cars24", certified: false, link: "", notes: "", stage: "discovered", seller_name: "", seller_phone: "", seller_type: "unknown" };
@@ -263,9 +287,9 @@ export default function Dashboard() {
           {[...new Set(cars.map(c => c.fuel))].map(f => <option key={f}>{f}</option>)}
         </select>
         <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: "var(--accent)", color: "#fff" }}>+ Add Car</button>
-        <button onClick={runScrape} disabled={scraping} className="px-4 py-2.5 rounded-xl text-xs font-bold border"
-          style={{ borderColor: scraping ? "#16a34a" : "var(--border)", color: scraping ? "#16a34a" : "var(--muted)" }}>
-          {scraping ? "⏳ Scraping..." : "🕷 Find Cars"}
+        <button onClick={() => setShowFinder(true)} disabled={finding} className="px-4 py-2.5 rounded-xl text-xs font-bold"
+          style={{ background: finding ? "#16a34a" : "var(--text)", color: "var(--bg)" }}>
+          {finding ? "⏳ Searching..." : "🔍 Find Cars"}
         </button>
       </div>
 
@@ -710,6 +734,62 @@ export default function Dashboard() {
       </div>
 
       <AddModal />
+
+      {/* AI Car Finder Modal */}
+      {showFinder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "#0009" }} onClick={() => !finding && setShowFinder(false)}>
+          <div className="rounded-2xl p-6 max-w-lg w-full max-h-[85vh] overflow-auto" style={{ background: "var(--card)", border: "1px solid var(--border)" }} onClick={e => e.stopPropagation()}>
+            <h3 className="text-lg font-bold mb-1" style={{ color: "var(--accent)" }}>🔍 Find Real Listings</h3>
+            <p className="text-xs mb-4" style={{ color: "var(--muted)" }}>AI searches Cars24, OLX, Spinny, Team-BHP, Facebook & more for real cars with actual links</p>
+
+            {/* Quick search buttons */}
+            <div className="flex flex-wrap gap-2 mb-4">
+              {[
+                { label: "🏴 Diesel 2L+ SUVs", q: "used diesel SUV 2 litre above", m: ["Fortuner", "Thar", "XUV700", "Scorpio N", "Safari", "Harrier"] },
+                { label: "🛻 Pickup Trucks", q: "used pickup truck", m: ["Isuzu D-Max", "Isuzu V-Cross", "Toyota Hilux", "Tata Yodha"] },
+                { label: "🏔 4x4 Vehicles", q: "used 4x4 SUV", m: ["Fortuner 4x4", "Thar 4x4", "Jimny", "Gurkha", "Scorpio N 4x4"] },
+                { label: "💰 Under 10L Diesel", q: "used diesel car under 10 lakh", m: [] },
+                { label: "🚗 Enthusiast Cars", q: "used enthusiast car modified", m: ["Octavia RS", "Thar modified", "Ecosport Ecoboost"] },
+              ].map(s => (
+                <button key={s.label} disabled={finding} onClick={() => { setFindQuery(s.q); setFindModels(s.m); runFind(s.q, s.m); }}
+                  className="px-3 py-2 rounded-xl text-xs font-semibold border transition-all hover:shadow-md"
+                  style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}>
+                  {s.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom search */}
+            <div className="mb-4">
+              <label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Or search anything</label>
+              <div className="flex gap-2">
+                <input value={findQuery} onChange={e => setFindQuery(e.target.value)} placeholder="e.g. white Fortuner 4x4 under 30 lakh Chennai"
+                  className="flex-1 px-3 py-2.5 rounded-xl text-sm outline-none" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}
+                  onKeyDown={e => e.key === "Enter" && !finding && runFind()} />
+                <button onClick={() => runFind()} disabled={finding || !findQuery} className="px-5 py-2.5 rounded-xl text-sm font-bold"
+                  style={{ background: finding ? "#16a34a" : "var(--accent)", color: "#fff" }}>
+                  {finding ? "⏳" : "Go"}
+                </button>
+              </div>
+            </div>
+
+            {/* Search context */}
+            <div className="text-[11px] p-3 rounded-xl mb-4" style={{ background: "var(--deep)", color: "var(--muted)" }}>
+              Searching in: <strong>{prefs.base_city}</strong> · Budget: <strong>₹{(prefs.budget_min/100000).toFixed(0)}L – ₹{(prefs.budget_max/100000).toFixed(0)}L</strong>
+              {finding && <div className="mt-2 text-xs font-semibold animate-pulse" style={{ color: "var(--accent)" }}>AI is searching across platforms... this takes 15-30 seconds</div>}
+            </div>
+
+            {/* Results */}
+            {lastFind && (
+              <div className="text-xs" style={{ color: lastFind.found > 0 ? "#16a34a" : "var(--muted)" }}>
+                {lastFind.found > 0 ? `✅ Found ${lastFind.found} listings — added to your dashboard` : lastFind.error || "No results found. Try different search terms."}
+              </div>
+            )}
+
+            {!finding && <button onClick={() => setShowFinder(false)} className="mt-4 text-xs underline" style={{ color: "var(--muted)" }}>Close</button>}
+          </div>
+        </div>
+      )}
 
       {toast && <div className="fixed bottom-5 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl text-sm font-semibold shadow-xl z-50" style={{ background: "var(--accent)", color: "#fff" }}>{toast}</div>}
     </div>
