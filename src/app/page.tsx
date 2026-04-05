@@ -11,64 +11,52 @@ import {
 } from "@/lib/car-intel";
 import { SEED_CARS } from "@/lib/seed-data";
 
-// ─── Color-matched car images via proxy ───
-// Real CDN images served through /api/img proxy to bypass hotlink blocking
+// ─── Car images via proxy ───
+// imgd.aeplcdn.com blocks direct hotlinking but works with correct Referer
+// /api/img proxy adds the right headers
 
-const P = "/api/img?url="; // proxy prefix
-const CDN = "https://imgd.aeplcdn.com/664x374/n/cw/ec";
-
-const MODEL_IMGS: Record<string, Record<string, string>> = {
-  "Toyota Fortuner": { _: `${CDN}/44709/fortuner-exterior-right-front-three-quarter-19.jpeg`, white: `${CDN}/44709/fortuner-exterior-right-front-three-quarter-19.jpeg`, black: `${CDN}/44709/fortuner-exterior-right-front-three-quarter-3.jpeg`, grey: `${CDN}/44709/fortuner-exterior-right-front-three-quarter-8.jpeg`, silver: `${CDN}/44709/fortuner-exterior-right-front-three-quarter-8.jpeg`, brown: `${CDN}/44709/fortuner-exterior-right-front-three-quarter-10.jpeg` },
-  "Mahindra Thar ROXX": { _: `${CDN}/157871/thar-roxx-exterior-right-front-three-quarter.jpeg`, red: `${CDN}/157871/thar-roxx-exterior-right-front-three-quarter.jpeg`, tango: `${CDN}/157871/thar-roxx-exterior-right-front-three-quarter.jpeg`, black: `${CDN}/157871/thar-roxx-exterior-right-front-three-quarter-2.jpeg`, stealth: `${CDN}/157871/thar-roxx-exterior-right-front-three-quarter-2.jpeg`, white: `${CDN}/157871/thar-roxx-exterior-right-front-three-quarter-5.jpeg`, grey: `${CDN}/157871/thar-roxx-exterior-right-front-three-quarter-4.jpeg` },
-  "Mahindra Thar": { _: `${CDN}/40087/thar-exterior-right-front-three-quarter-11.jpeg`, red: `${CDN}/40087/thar-exterior-right-front-three-quarter-11.jpeg`, black: `${CDN}/40087/thar-exterior-right-front-three-quarter-2.jpeg`, napoli: `${CDN}/40087/thar-exterior-right-front-three-quarter-2.jpeg`, white: `${CDN}/40087/thar-exterior-right-front-three-quarter-7.jpeg`, everest: `${CDN}/40087/thar-exterior-right-front-three-quarter-7.jpeg`, aquamarine: `${CDN}/40087/thar-exterior-right-front-three-quarter-5.jpeg`, grey: `${CDN}/40087/thar-exterior-right-front-three-quarter-4.jpeg`, galaxy: `${CDN}/40087/thar-exterior-right-front-three-quarter-4.jpeg`, beige: `${CDN}/40087/thar-exterior-right-front-three-quarter-6.jpeg`, rocky: `${CDN}/40087/thar-exterior-right-front-three-quarter-6.jpeg`, green: `${CDN}/40087/thar-exterior-right-front-three-quarter-9.jpeg` },
-  "Maruti Jimny": { _: `${CDN}/112839/jimny-exterior-right-front-three-quarter-3.jpeg`, yellow: `${CDN}/112839/jimny-exterior-right-front-three-quarter-3.jpeg`, kinetic: `${CDN}/112839/jimny-exterior-right-front-three-quarter-3.jpeg`, grey: `${CDN}/112839/jimny-exterior-right-front-three-quarter.jpeg`, granite: `${CDN}/112839/jimny-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/112839/jimny-exterior-right-front-three-quarter-4.jpeg`, arctic: `${CDN}/112839/jimny-exterior-right-front-three-quarter-4.jpeg`, blue: `${CDN}/112839/jimny-exterior-right-front-three-quarter-2.jpeg`, nexa: `${CDN}/112839/jimny-exterior-right-front-three-quarter-2.jpeg`, red: `${CDN}/112839/jimny-exterior-right-front-three-quarter-5.jpeg`, black: `${CDN}/112839/jimny-exterior-right-front-three-quarter-6.jpeg` },
-  "Hyundai Creta": { _: `${CDN}/106815/creta-exterior-right-front-three-quarter-5.jpeg`, white: `${CDN}/106815/creta-exterior-right-front-three-quarter-5.jpeg`, atlas: `${CDN}/106815/creta-exterior-right-front-three-quarter-5.jpeg`, black: `${CDN}/106815/creta-exterior-right-front-three-quarter-2.jpeg`, phantom: `${CDN}/106815/creta-exterior-right-front-three-quarter-2.jpeg`, red: `${CDN}/106815/creta-exterior-right-front-three-quarter-3.jpeg`, grey: `${CDN}/106815/creta-exterior-right-front-three-quarter.jpeg`, titan: `${CDN}/106815/creta-exterior-right-front-three-quarter.jpeg`, orange: `${CDN}/106815/creta-exterior-right-front-three-quarter-4.jpeg` },
-  "Tata Harrier": { _: `${CDN}/139139/harrier-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/139139/harrier-exterior-right-front-three-quarter.jpeg`, black: `${CDN}/139139/harrier-exterior-right-front-three-quarter-2.jpeg`, oberon: `${CDN}/139139/harrier-exterior-right-front-three-quarter-2.jpeg`, red: `${CDN}/139139/harrier-exterior-right-front-three-quarter-5.jpeg`, calypso: `${CDN}/139139/harrier-exterior-right-front-three-quarter-5.jpeg`, grey: `${CDN}/139139/harrier-exterior-right-front-three-quarter-3.jpeg` },
-  "Kia Seltos": { _: `${CDN}/174323/seltos-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/174323/seltos-exterior-right-front-three-quarter.jpeg`, glacier: `${CDN}/174323/seltos-exterior-right-front-three-quarter.jpeg`, black: `${CDN}/174323/seltos-exterior-right-front-three-quarter-2.jpeg`, aurora: `${CDN}/174323/seltos-exterior-right-front-three-quarter-2.jpeg`, red: `${CDN}/174323/seltos-exterior-right-front-three-quarter-3.jpeg`, intense: `${CDN}/174323/seltos-exterior-right-front-three-quarter-3.jpeg`, grey: `${CDN}/174323/seltos-exterior-right-front-three-quarter-4.jpeg`, graphite: `${CDN}/174323/seltos-exterior-right-front-three-quarter-5.jpeg` },
-  "Skoda Octavia": { _: `${CDN}/32942/octavia-exterior-right-front-three-quarter-5.jpeg`, white: `${CDN}/32942/octavia-exterior-right-front-three-quarter-5.jpeg`, candy: `${CDN}/32942/octavia-exterior-right-front-three-quarter-5.jpeg`, black: `${CDN}/32942/octavia-exterior-right-front-three-quarter-2.jpeg`, blue: `${CDN}/32942/octavia-exterior-right-front-three-quarter-3.jpeg`, silver: `${CDN}/32942/octavia-exterior-right-front-three-quarter-4.jpeg` },
-  "Toyota Innova Hycross": { _: `${CDN}/135591/innova-hycross-exterior-right-front-three-quarter-2.jpeg`, white: `${CDN}/135591/innova-hycross-exterior-right-front-three-quarter-2.jpeg`, black: `${CDN}/135591/innova-hycross-exterior-right-front-three-quarter.jpeg`, grey: `${CDN}/135591/innova-hycross-exterior-right-front-three-quarter-3.jpeg` },
-  "Toyota Innova": { _: `${CDN}/51435/innova-crysta-exterior-right-front-three-quarter-2.jpeg`, white: `${CDN}/51435/innova-crysta-exterior-right-front-three-quarter-2.jpeg`, super: `${CDN}/51435/innova-crysta-exterior-right-front-three-quarter-2.jpeg`, grey: `${CDN}/51435/innova-crysta-exterior-right-front-three-quarter.jpeg`, silver: `${CDN}/51435/innova-crysta-exterior-right-front-three-quarter.jpeg`, black: `${CDN}/51435/innova-crysta-exterior-right-front-three-quarter-3.jpeg` },
-  "Volkswagen Taigun": { _: `${CDN}/44919/taigun-exterior-right-front-three-quarter-19.jpeg`, white: `${CDN}/44919/taigun-exterior-right-front-three-quarter-19.jpeg`, red: `${CDN}/44919/taigun-exterior-right-front-three-quarter-2.jpeg`, blue: `${CDN}/44919/taigun-exterior-right-front-three-quarter-6.jpeg`, silver: `${CDN}/44919/taigun-exterior-right-front-three-quarter-8.jpeg`, yellow: `${CDN}/44919/taigun-exterior-right-front-three-quarter-9.jpeg`, black: `${CDN}/44919/taigun-exterior-right-front-three-quarter-4.jpeg` },
-  "Toyota Hilux": { _: `${CDN}/98042/hilux-exterior-right-front-three-quarter-8.jpeg`, white: `${CDN}/98042/hilux-exterior-right-front-three-quarter-8.jpeg`, red: `${CDN}/98042/hilux-exterior-right-front-three-quarter.jpeg`, emotional: `${CDN}/98042/hilux-exterior-right-front-three-quarter.jpeg`, grey: `${CDN}/98042/hilux-exterior-right-front-three-quarter-3.jpeg`, silver: `${CDN}/98042/hilux-exterior-right-front-three-quarter-5.jpeg`, black: `${CDN}/98042/hilux-exterior-right-front-three-quarter-4.jpeg` },
-  "Force Gurkha": { _: `${CDN}/40435/gurkha-exterior-right-front-three-quarter.jpeg`, green: `${CDN}/40435/gurkha-exterior-right-front-three-quarter.jpeg`, matt: `${CDN}/40435/gurkha-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/40435/gurkha-exterior-right-front-three-quarter-2.jpeg`, black: `${CDN}/40435/gurkha-exterior-right-front-three-quarter-3.jpeg` },
-  "Isuzu D-Max": { _: `${CDN}/110233/d-max-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/110233/d-max-exterior-right-front-three-quarter.jpeg`, silver: `${CDN}/110233/d-max-exterior-right-front-three-quarter-2.jpeg`, mercury: `${CDN}/110233/d-max-exterior-right-front-three-quarter-2.jpeg`, titanium: `${CDN}/110233/d-max-exterior-right-front-three-quarter-2.jpeg`, blue: `${CDN}/110233/d-max-exterior-right-front-three-quarter-3.jpeg`, sapphire: `${CDN}/110233/d-max-exterior-right-front-three-quarter-3.jpeg`, red: `${CDN}/110233/d-max-exterior-right-front-three-quarter-4.jpeg`, venetian: `${CDN}/110233/d-max-exterior-right-front-three-quarter-4.jpeg` },
-  "Isuzu V-Cross": { _: `${CDN}/110233/d-max-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/110233/d-max-exterior-right-front-three-quarter.jpeg`, silver: `${CDN}/110233/d-max-exterior-right-front-three-quarter-2.jpeg`, blue: `${CDN}/110233/d-max-exterior-right-front-three-quarter-3.jpeg`, red: `${CDN}/110233/d-max-exterior-right-front-three-quarter-4.jpeg` },
-  "Mahindra XUV700": { _: `${CDN}/42355/xuv700-exterior-right-front-three-quarter-3.jpeg`, black: `${CDN}/42355/xuv700-exterior-right-front-three-quarter-3.jpeg`, midnight: `${CDN}/42355/xuv700-exterior-right-front-three-quarter-3.jpeg`, white: `${CDN}/42355/xuv700-exterior-right-front-three-quarter.jpeg`, red: `${CDN}/42355/xuv700-exterior-right-front-three-quarter-2.jpeg`, blue: `${CDN}/42355/xuv700-exterior-right-front-three-quarter-5.jpeg` },
-  "Mahindra Scorpio": { _: `${CDN}/130583/scorpio-n-exterior-right-front-three-quarter-75.jpeg`, black: `${CDN}/130583/scorpio-n-exterior-right-front-three-quarter-75.jpeg`, white: `${CDN}/130583/scorpio-n-exterior-right-front-three-quarter-2.jpeg`, everest: `${CDN}/130583/scorpio-n-exterior-right-front-three-quarter-2.jpeg`, silver: `${CDN}/130583/scorpio-n-exterior-right-front-three-quarter-3.jpeg`, red: `${CDN}/130583/scorpio-n-exterior-right-front-three-quarter-4.jpeg` },
-  "Tata Safari": { _: `${CDN}/139139/safari-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/139139/safari-exterior-right-front-three-quarter.jpeg`, black: `${CDN}/139139/safari-exterior-right-front-three-quarter-2.jpeg`, dark: `${CDN}/139139/safari-exterior-right-front-three-quarter-2.jpeg`, blue: `${CDN}/139139/safari-exterior-right-front-three-quarter-4.jpeg`, royal: `${CDN}/139139/safari-exterior-right-front-three-quarter-4.jpeg`, grey: `${CDN}/139139/safari-exterior-right-front-three-quarter-3.jpeg` },
-  "Renault Duster": { _: `${CDN}/178797/duster-exterior-right-front-three-quarter-6.jpeg`, white: `${CDN}/178797/duster-exterior-right-front-three-quarter-6.jpeg`, green: `${CDN}/178797/duster-exterior-right-front-three-quarter-2.jpeg`, jade: `${CDN}/178797/duster-exterior-right-front-three-quarter-2.jpeg`, black: `${CDN}/178797/duster-exterior-right-front-three-quarter-3.jpeg`, red: `${CDN}/178797/duster-exterior-right-front-three-quarter-4.jpeg`, blue: `${CDN}/178797/duster-exterior-right-front-three-quarter-5.jpeg` },
-  "Honda City": { _: `${CDN}/134287/city-exterior-right-front-three-quarter-2.jpeg`, white: `${CDN}/134287/city-exterior-right-front-three-quarter-2.jpeg`, platinum: `${CDN}/134287/city-exterior-right-front-three-quarter-2.jpeg`, grey: `${CDN}/134287/city-exterior-right-front-three-quarter.jpeg`, red: `${CDN}/134287/city-exterior-right-front-three-quarter-3.jpeg`, black: `${CDN}/134287/city-exterior-right-front-three-quarter-4.jpeg` },
-  "Maruti Grand Vitara": { _: `${CDN}/106867/grand-vitara-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/106867/grand-vitara-exterior-right-front-three-quarter.jpeg`, arctic: `${CDN}/106867/grand-vitara-exterior-right-front-three-quarter.jpeg`, blue: `${CDN}/106867/grand-vitara-exterior-right-front-three-quarter-2.jpeg`, nexa: `${CDN}/106867/grand-vitara-exterior-right-front-three-quarter-2.jpeg`, black: `${CDN}/106867/grand-vitara-exterior-right-front-three-quarter-3.jpeg`, silver: `${CDN}/106867/grand-vitara-exterior-right-front-three-quarter-4.jpeg` },
-  "Jeep Compass": { _: `${CDN}/112641/compass-exterior-right-front-three-quarter-7.jpeg`, white: `${CDN}/112641/compass-exterior-right-front-three-quarter-7.jpeg`, grey: `${CDN}/112641/compass-exterior-right-front-three-quarter-7.jpeg`, red: `${CDN}/112641/compass-exterior-right-front-three-quarter-3.jpeg`, exotica: `${CDN}/112641/compass-exterior-right-front-three-quarter-3.jpeg`, black: `${CDN}/112641/compass-exterior-right-front-three-quarter-2.jpeg` },
-  "Skoda Kushaq": { _: `${CDN}/174131/kushaq-exterior-right-front-three-quarter-3.jpeg`, red: `${CDN}/174131/kushaq-exterior-right-front-three-quarter-3.jpeg`, tornado: `${CDN}/174131/kushaq-exterior-right-front-three-quarter-3.jpeg`, white: `${CDN}/174131/kushaq-exterior-right-front-three-quarter.jpeg`, grey: `${CDN}/174131/kushaq-exterior-right-front-three-quarter-2.jpeg`, carbon: `${CDN}/174131/kushaq-exterior-right-front-three-quarter-2.jpeg` },
-  "Tata Nexon": { _: `${CDN}/141867/nexon-exterior-right-front-three-quarter-48.jpeg`, red: `${CDN}/141867/nexon-exterior-right-front-three-quarter-48.jpeg`, flame: `${CDN}/141867/nexon-exterior-right-front-three-quarter-48.jpeg`, white: `${CDN}/141867/nexon-exterior-right-front-three-quarter-2.jpeg`, grey: `${CDN}/141867/nexon-exterior-right-front-three-quarter-3.jpeg`, blue: `${CDN}/141867/nexon-exterior-right-front-three-quarter-4.jpeg` },
-  "Ford Ecosport": { _: `${CDN}/33453/ecosport-exterior-right-front-three-quarter-35.jpeg`, black: `${CDN}/33453/ecosport-exterior-right-front-three-quarter-35.jpeg`, white: `${CDN}/33453/ecosport-exterior-right-front-three-quarter-2.jpeg`, grey: `${CDN}/33453/ecosport-exterior-right-front-three-quarter-3.jpeg` },
-  "Volkswagen Virtus": { _: `${CDN}/132427/virtus-exterior-right-front-three-quarter-2.jpeg`, blue: `${CDN}/132427/virtus-exterior-right-front-three-quarter-2.jpeg`, white: `${CDN}/132427/virtus-exterior-right-front-three-quarter.jpeg`, red: `${CDN}/132427/virtus-exterior-right-front-three-quarter-3.jpeg`, grey: `${CDN}/132427/virtus-exterior-right-front-three-quarter-4.jpeg` },
-  "Toyota Hyryder": { _: `${CDN}/107541/hyryder-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/107541/hyryder-exterior-right-front-three-quarter.jpeg`, grey: `${CDN}/107541/hyryder-exterior-right-front-three-quarter-2.jpeg`, black: `${CDN}/107541/hyryder-exterior-right-front-three-quarter-3.jpeg` },
-  "Kia Sonet": { _: `${CDN}/141115/sonet-exterior-right-front-three-quarter-2.jpeg`, red: `${CDN}/141115/sonet-exterior-right-front-three-quarter-2.jpeg`, intense: `${CDN}/141115/sonet-exterior-right-front-three-quarter-2.jpeg`, white: `${CDN}/141115/sonet-exterior-right-front-three-quarter.jpeg`, black: `${CDN}/141115/sonet-exterior-right-front-three-quarter-3.jpeg` },
-  "Hyundai Venue": { _: `${CDN}/136301/venue-exterior-right-front-three-quarter-2.jpeg`, silver: `${CDN}/136301/venue-exterior-right-front-three-quarter-2.jpeg`, white: `${CDN}/136301/venue-exterior-right-front-three-quarter.jpeg`, blue: `${CDN}/136301/venue-exterior-right-front-three-quarter-3.jpeg`, red: `${CDN}/136301/venue-exterior-right-front-three-quarter-4.jpeg` },
-  "Mahindra Bolero": { _: `${CDN}/47703/bolero-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/47703/bolero-exterior-right-front-three-quarter.jpeg`, black: `${CDN}/47703/bolero-exterior-right-front-three-quarter-2.jpeg`, silver: `${CDN}/47703/bolero-exterior-right-front-three-quarter-3.jpeg` },
-  "Tata Yodha": { _: `${CDN}/45259/yodha-exterior-right-front-three-quarter.jpeg`, white: `${CDN}/45259/yodha-exterior-right-front-three-quarter.jpeg` },
+const MODEL_IMGS: Record<string, string> = {
+  "Toyota Fortuner": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Toyota/Fortuner/10904/1755846017683/front-left-side-47.jpg",
+  "Mahindra Thar ROXX": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/Thar-ROXX/11440/1723606498498/front-left-side-47.jpg",
+  "Mahindra Thar": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/Thar/12264/1759841599514/front-left-side-47.jpg",
+  "Maruti Jimny": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Maruti-Suzuki/Jimny/10896/1714392498498/front-left-side-47.jpg",
+  "Hyundai Creta": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Hyundai/Creta/11500/1727953010481/front-left-side-47.jpg",
+  "Tata Harrier": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Tata/Harrier/11367/1723023631498/front-left-side-47.jpg",
+  "Kia Seltos": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Kia/Seltos/11498/1727867778127/front-left-side-47.jpg",
+  "Skoda Octavia": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Skoda/Octavia/9498/1697697308533/front-left-side-47.jpg",
+  "Toyota Innova Hycross": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Toyota/Innova-Hycross/10076/1697697308533/front-left-side-47.jpg",
+  "Toyota Innova": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Toyota/Innova-Crysta/8867/1697697308533/front-left-side-47.jpg",
+  "Volkswagen Taigun": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Volkswagen/Taigun/9928/1697697308533/front-left-side-47.jpg",
+  "Toyota Hilux": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Toyota/Hilux/9440/1697697308533/front-left-side-47.jpg",
+  "Force Gurkha": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Force/Gurkha/9590/1697697308533/front-left-side-47.jpg",
+  "Isuzu D-Max": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Isuzu/D-Max/9316/1697697308533/front-left-side-47.jpg",
+  "Isuzu V-Cross": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Isuzu/D-Max/9316/1697697308533/front-left-side-47.jpg",
+  "Mahindra XUV700": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/XUV700/8609/1697697308533/front-left-side-47.jpg",
+  "Mahindra Scorpio": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/Scorpio-N/10498/1697697308533/front-left-side-47.jpg",
+  "Tata Safari": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Tata/Safari/11367/1723023631498/front-left-side-47.jpg",
+  "Renault Duster": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Renault/Duster/12017/1737363497036/front-left-side-47.jpg",
+  "Honda City": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Honda/City/9710/1697697308533/front-left-side-47.jpg",
+  "Maruti Grand Vitara": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Maruti-Suzuki/Grand-Vitara/10424/1697697308533/front-left-side-47.jpg",
+  "Jeep Compass": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Jeep/Compass/10745/1714392498498/front-left-side-47.jpg",
+  "Skoda Kushaq": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Skoda/Kushaq/11564/1737363497036/front-left-side-47.jpg",
+  "Tata Nexon": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Tata/Nexon/11096/1714392498498/front-left-side-47.jpg",
+  "Ford Ecosport": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Ford/Ecosport/6910/1697697308533/front-left-side-47.jpg",
+  "Volkswagen Virtus": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Volkswagen/Virtus/10383/1697697308533/front-left-side-47.jpg",
+  "Toyota Hyryder": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Toyota/Hyryder/10464/1697697308533/front-left-side-47.jpg",
+  "Kia Sonet": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Kia/Sonet/11229/1714392498498/front-left-side-47.jpg",
+  "Hyundai Venue": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Hyundai/Venue/11074/1714392498498/front-left-side-47.jpg",
+  "Mahindra Bolero": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Mahindra/Bolero/6498/1697697308533/front-left-side-47.jpg",
+  "Tata Yodha": "https://stimg.cardekho.com/images/carexteriorimages/630x420/Tata/Yodha/7604/1697697308533/front-left-side-47.jpg",
 };
 
-function carImg(model: string, color?: string): string {
-  // Find model — prefer longest key match
+function carImg(model: string): string {
   const matches = Object.keys(MODEL_IMGS).filter(k => model?.includes(k));
   const key = matches.sort((a, b) => b.length - a.length)[0];
   if (!key) return "";
-  const m = MODEL_IMGS[key];
-
-  // Match color
-  if (color) {
-    const words = color.toLowerCase().split(/[\s,/()-]+/).filter(w => w.length > 2);
-    for (const w of words) {
-      for (const [ck, url] of Object.entries(m)) {
-        if (ck === "_") continue;
-        if (ck === w || w.includes(ck) || ck.includes(w)) return P + encodeURIComponent(url);
-      }
-    }
-  }
-  return P + encodeURIComponent(m._ || Object.values(m)[0]);
+  const url = MODEL_IMGS[key];
+  // stimg.cardekho.com works directly, imgd.aeplcdn.com needs proxy
+  if (url.includes("stimg.cardekho.com")) return url;
+  return "/api/img?url=" + encodeURIComponent(url);
 }
 
 // ─── Time helpers ───
@@ -311,7 +299,7 @@ export default function Dashboard() {
           const dist = getDistance(prefs.base_city || "Chennai", car.city);
           const distL = getDistanceLabel(dist);
           const stage = SCOUT_STAGES.find(s => s.id === (car.stage || "discovered"));
-          const img = (car.images?.length ? car.images[0] : "") || carImg(car.model, car.color);
+          const img = (car.images?.length ? car.images[0] : "") || carImg(car.model);
           const isDH = isDieselHunterMatch(car, prefs);
           const isPH = isPickupHunterMatch(car, prefs);
           const is4H = is4x4HunterMatch(car, prefs);
@@ -326,7 +314,7 @@ export default function Dashboard() {
               <div className="relative h-44 overflow-hidden" style={{ background: "var(--deep)" }}>
                 {img ? (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={img} alt={car.model} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={e => { e.currentTarget.src = carImg(car.model, car.color); e.currentTarget.onerror = null; }} />
+                  <img src={img} alt={car.model} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={e => { e.currentTarget.style.display = 'none'; }} />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-4xl">🚗</div>
                 )}
@@ -412,7 +400,7 @@ export default function Dashboard() {
     const dep = calcDepreciation(car);
     const trust = SOURCE_TRUST[car.source];
     const a = ai[car.id];
-    const img = (car.images?.length ? car.images[0] : "") || carImg(car.model, car.color);
+    const img = (car.images?.length ? car.images[0] : "") || carImg(car.model);
     const dist = getDistance(prefs.base_city || "Chennai", car.city);
     const distL = getDistanceLabel(dist);
     const cp = ckProg(car.id);
@@ -427,7 +415,7 @@ export default function Dashboard() {
           <div className="relative h-56 sm:h-72" style={{ background: "var(--deep)" }}>
             {img && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={img} alt={car.model} className="w-full h-full object-cover" onError={e => { e.currentTarget.src = carImg(car.model, car.color); e.currentTarget.onerror = null; }} />
+              <img src={img} alt={car.model} className="w-full h-full object-cover" onError={e => { e.currentTarget.style.display = 'none'; }} />
             )}
             <div className="absolute bottom-0 left-0 right-0 p-5" style={{ background: "linear-gradient(transparent, #000c)" }}>
               <h1 className="text-2xl font-extrabold text-white">{car.model}</h1>
