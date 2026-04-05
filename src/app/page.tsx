@@ -353,10 +353,13 @@ export default function Dashboard() {
                 </div>
 
                 {/* Quick insights count */}
-                <div className="flex gap-3 mt-3 text-[11px]">
-                  <span className="text-green-600 font-semibold">✓ {car.insights.whyBuy.length} pros</span>
-                  <span className="text-red-500 font-semibold">✕ {car.insights.whyNot.length} cons</span>
-                  {ai[car.id] && <span className="font-bold" style={{ color: ai[car.id].verdict === "BUY" ? "#16a34a" : ai[car.id].verdict === "SKIP" ? "#dc2626" : "#ca8a04" }}>AI: {ai[car.id].verdict}</span>}
+                <div className="flex justify-between items-center mt-3">
+                  <div className="flex gap-3 text-[11px]">
+                    <span className="text-green-600 font-semibold">✓ {car.insights.whyBuy.length} pros</span>
+                    <span className="text-red-500 font-semibold">✕ {car.insights.whyNot.length} cons</span>
+                    {ai[car.id] && <span className="font-bold" style={{ color: ai[car.id].verdict === "BUY" ? "#16a34a" : ai[car.id].verdict === "SKIP" ? "#dc2626" : "#ca8a04" }}>AI: {ai[car.id].verdict}</span>}
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full" style={{ background: "var(--deep)", color: "var(--muted)", border: "1px solid var(--border)" }}>{car.source}</span>
                 </div>
               </div>
             </div>
@@ -417,7 +420,28 @@ export default function Dashboard() {
                 {dep && <p className="text-sm mt-1"><span className="text-green-600 font-semibold">Save ₹{(dep.savedAmt / 100000).toFixed(1)}L</span> <span style={{ color: "var(--muted)" }}>({dep.depPct}% off ₹{(dep.avgNew / 100000).toFixed(0)}L new)</span></p>}
               </div>
               <div className="flex gap-2 flex-wrap">
-                {car.link && <a href={car.link} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl text-xs font-bold text-white" style={{ background: "var(--accent)" }}>View Listing ↗</a>}
+                {/* Always show a link — either direct listing or search on source */}
+                {(() => {
+                  if (car.link) return <a href={car.link} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl text-xs font-bold text-white" style={{ background: "var(--accent)" }}>View Listing ↗</a>;
+                  // Generate search URL based on source
+                  const modelSlug = encodeURIComponent(car.model.split(" ").slice(0, 3).join(" "));
+                  const citySlug = (car.city || "chennai").toLowerCase();
+                  const searchUrls: Record<string, string> = {
+                    "Cars24": `https://www.cars24.com/buy-used-cars-${citySlug}/?q=${modelSlug}`,
+                    "Spinny": `https://www.spinny.com/used-cars/${citySlug}/?q=${modelSlug}`,
+                    "CarDekho": `https://www.cardekho.com/used-cars+in+${citySlug}/${modelSlug}`,
+                    "OLX": `https://www.olx.in/items/q-${modelSlug}`,
+                    "Toyota U Trust": `https://www.toyotautrust.in/used-cars/${citySlug}`,
+                    "Mahindra First Choice": `https://www.mahindrafirstchoice.com/used-cars/${citySlug}`,
+                    "Das WeltAuto": `https://www.dasweltauto.co.in/search`,
+                    "Hyundai H Promise": `https://www.hyundai.com/in/en/find-a-car/hpromise`,
+                    "Team-BHP": `https://www.team-bhp.com/forum/classifieds/`,
+                    "Facebook Marketplace": `https://www.facebook.com/marketplace/search/?query=${modelSlug}`,
+                    "Facebook Group": `https://www.facebook.com/search/groups/?q=${modelSlug}+for+sale`,
+                  };
+                  const url = searchUrls[car.source] || `https://www.google.com/search?q=${modelSlug}+used+car+${citySlug}+for+sale`;
+                  return <a href={url} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl text-xs font-bold border" style={{ borderColor: "var(--accent)", color: "var(--accent)" }}>🔍 Search on {car.source} ↗</a>;
+                })()}
                 {car.seller_phone && <a href={`tel:${car.seller_phone}`} className="px-4 py-2 rounded-xl text-xs font-bold bg-green-600 text-white">📞 Call Seller</a>}
               </div>
             </div>
