@@ -1,51 +1,70 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabase";
-import type { Car, Preferences, AiAnalysis } from "@/lib/supabase";
+import type { Preferences } from "@/lib/supabase";
 import {
-  MODEL_INTEL, SOURCE_TRUST, SCOUT_STAGES, CHECKLIST_TEMPLATE,
+  SOURCE_TRUST, SCOUT_STAGES, CHECKLIST_TEMPLATE,
   findModelIntel, calcDepreciation, scoreCar, generateInsights,
   BASE_LOCATIONS, getDistance, getDistanceLabel, getDisplacement,
   isDieselHunterMatch, isPickupHunterMatch, is4x4HunterMatch, isPickup, is4x4Capable,
 } from "@/lib/car-intel";
 import { SEED_CARS } from "@/lib/seed-data";
 
-// ─── Model images (curated CDN URLs) ───
-const MODEL_IMAGES: Record<string, string[]> = {
-  "Toyota Fortuner": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/44709/fortuner-exterior-right-front-three-quarter-19.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/44709/fortuner-exterior-right-side-view.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/44709/fortuner-interior-dashboard.jpeg"],
-  "Mahindra Thar": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/40087/thar-exterior-right-front-three-quarter-11.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/40087/thar-exterior-right-side-view-2.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/40087/thar-interior-dashboard.jpeg"],
-  "Maruti Jimny": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/112839/jimny-exterior-right-front-three-quarter-3.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/112839/jimny-exterior-right-side-view.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/112839/jimny-interior-dashboard.jpeg"],
-  "Skoda Octavia": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/32942/octavia-exterior-right-front-three-quarter-5.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/32942/octavia-exterior-right-side-view.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/32942/octavia-interior-dashboard.jpeg"],
-  "Hyundai Creta": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/106815/creta-exterior-right-front-three-quarter-5.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/106815/creta-exterior-right-side-view.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/106815/creta-interior-dashboard.jpeg"],
-  "Volkswagen Taigun": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/44919/taigun-exterior-right-front-three-quarter-19.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/44919/taigun-exterior-right-side-view.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/44919/taigun-interior-dashboard.jpeg"],
-  "Toyota Innova": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/51435/innova-crysta-exterior-right-front-three-quarter-2.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/51435/innova-crysta-exterior-right-side-view.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/51435/innova-crysta-interior-dashboard.jpeg"],
-  "Tata Harrier": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/139139/harrier-exterior-right-front-three-quarter.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/139139/harrier-exterior-right-side-view.jpeg"],
-  "Renault Duster": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/178797/duster-exterior-right-front-three-quarter-6.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/178797/duster-exterior-right-side-view-2.jpeg"],
-  "Mahindra XUV700": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/42355/xuv700-exterior-right-front-three-quarter-3.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/42355/xuv700-exterior-right-side-view.jpeg"],
-  "Honda City": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/134287/city-exterior-right-front-three-quarter-2.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/134287/city-exterior-right-side-view.jpeg"],
-  "Maruti Grand Vitara": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/106867/grand-vitara-exterior-right-front-three-quarter.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/106867/grand-vitara-exterior-right-side-view.jpeg"],
-  "Jeep Compass": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/112641/compass-exterior-right-front-three-quarter-7.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/112641/compass-exterior-right-side-view.jpeg"],
-  "Ford Ecosport": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/33453/ecosport-exterior-right-front-three-quarter-35.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/33453/ecosport-exterior-right-side-view.jpeg"],
-  "Kia Seltos": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/174323/seltos-exterior-right-front-three-quarter.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/174323/seltos-exterior-right-side-view.jpeg"],
-  "Skoda Kushaq": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/174131/kushaq-exterior-right-front-three-quarter-3.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/174131/kushaq-exterior-right-side-view.jpeg"],
-  "Tata Nexon": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/141867/nexon-exterior-right-front-three-quarter-48.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/141867/nexon-exterior-right-side-view.jpeg"],
-  "Mahindra Scorpio": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/130583/scorpio-n-exterior-right-front-three-quarter-75.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/130583/scorpio-n-exterior-right-side-view.jpeg"],
-  "Toyota Hyryder": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/107541/hyryder-exterior-right-front-three-quarter.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/107541/hyryder-exterior-right-side-view.jpeg"],
-  "Tata Safari": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/139139/safari-exterior-right-front-three-quarter.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/139139/safari-exterior-right-side-view.jpeg"],
-  "Volkswagen Virtus": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/132427/virtus-exterior-right-front-three-quarter-2.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/132427/virtus-exterior-right-side-view.jpeg"],
-  "Kia Sonet": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/141115/sonet-exterior-right-front-three-quarter-2.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/141115/sonet-exterior-right-side-view.jpeg"],
-  "Hyundai Venue": ["https://imgd.aeplcdn.com/664x374/n/cw/ec/136301/venue-exterior-right-front-three-quarter-2.jpeg","https://imgd.aeplcdn.com/664x374/n/cw/ec/136301/venue-exterior-right-side-view.jpeg"],
+// ─── Model images ───
+const MI: Record<string, string> = {
+  "Toyota Fortuner": "https://imgd.aeplcdn.com/664x374/n/cw/ec/44709/fortuner-exterior-right-front-three-quarter-19.jpeg",
+  "Mahindra Thar": "https://imgd.aeplcdn.com/664x374/n/cw/ec/40087/thar-exterior-right-front-three-quarter-11.jpeg",
+  "Maruti Jimny": "https://imgd.aeplcdn.com/664x374/n/cw/ec/112839/jimny-exterior-right-front-three-quarter-3.jpeg",
+  "Skoda Octavia": "https://imgd.aeplcdn.com/664x374/n/cw/ec/32942/octavia-exterior-right-front-three-quarter-5.jpeg",
+  "Hyundai Creta": "https://imgd.aeplcdn.com/664x374/n/cw/ec/106815/creta-exterior-right-front-three-quarter-5.jpeg",
+  "Volkswagen Taigun": "https://imgd.aeplcdn.com/664x374/n/cw/ec/44919/taigun-exterior-right-front-three-quarter-19.jpeg",
+  "Toyota Innova": "https://imgd.aeplcdn.com/664x374/n/cw/ec/51435/innova-crysta-exterior-right-front-three-quarter-2.jpeg",
+  "Tata Harrier": "https://imgd.aeplcdn.com/664x374/n/cw/ec/139139/harrier-exterior-right-front-three-quarter.jpeg",
+  "Renault Duster": "https://imgd.aeplcdn.com/664x374/n/cw/ec/178797/duster-exterior-right-front-three-quarter-6.jpeg",
+  "Mahindra XUV700": "https://imgd.aeplcdn.com/664x374/n/cw/ec/42355/xuv700-exterior-right-front-three-quarter-3.jpeg",
+  "Honda City": "https://imgd.aeplcdn.com/664x374/n/cw/ec/134287/city-exterior-right-front-three-quarter-2.jpeg",
+  "Maruti Grand Vitara": "https://imgd.aeplcdn.com/664x374/n/cw/ec/106867/grand-vitara-exterior-right-front-three-quarter.jpeg",
+  "Jeep Compass": "https://imgd.aeplcdn.com/664x374/n/cw/ec/112641/compass-exterior-right-front-three-quarter-7.jpeg",
+  "Ford Ecosport": "https://imgd.aeplcdn.com/664x374/n/cw/ec/33453/ecosport-exterior-right-front-three-quarter-35.jpeg",
+  "Kia Seltos": "https://imgd.aeplcdn.com/664x374/n/cw/ec/174323/seltos-exterior-right-front-three-quarter.jpeg",
+  "Skoda Kushaq": "https://imgd.aeplcdn.com/664x374/n/cw/ec/174131/kushaq-exterior-right-front-three-quarter-3.jpeg",
+  "Tata Nexon": "https://imgd.aeplcdn.com/664x374/n/cw/ec/141867/nexon-exterior-right-front-three-quarter-48.jpeg",
+  "Mahindra Scorpio": "https://imgd.aeplcdn.com/664x374/n/cw/ec/130583/scorpio-n-exterior-right-front-three-quarter-75.jpeg",
+  "Toyota Hyryder": "https://imgd.aeplcdn.com/664x374/n/cw/ec/107541/hyryder-exterior-right-front-three-quarter.jpeg",
+  "Tata Safari": "https://imgd.aeplcdn.com/664x374/n/cw/ec/139139/safari-exterior-right-front-three-quarter.jpeg",
+  "Volkswagen Virtus": "https://imgd.aeplcdn.com/664x374/n/cw/ec/132427/virtus-exterior-right-front-three-quarter-2.jpeg",
+  "Kia Sonet": "https://imgd.aeplcdn.com/664x374/n/cw/ec/141115/sonet-exterior-right-front-three-quarter-2.jpeg",
+  "Hyundai Venue": "https://imgd.aeplcdn.com/664x374/n/cw/ec/136301/venue-exterior-right-front-three-quarter-2.jpeg",
+  "Isuzu D-Max": "https://imgd.aeplcdn.com/664x374/n/cw/ec/110233/d-max-exterior-right-front-three-quarter.jpeg",
+  "Isuzu V-Cross": "https://imgd.aeplcdn.com/664x374/n/cw/ec/110233/d-max-exterior-right-front-three-quarter.jpeg",
+  "Toyota Hilux": "https://imgd.aeplcdn.com/664x374/n/cw/ec/98042/hilux-exterior-right-front-three-quarter-8.jpeg",
+  "Force Gurkha": "https://imgd.aeplcdn.com/664x374/n/cw/ec/40435/gurkha-exterior-right-front-three-quarter.jpeg",
+  "Mahindra Thar ROXX": "https://imgd.aeplcdn.com/664x374/n/cw/ec/157871/thar-roxx-exterior-right-front-three-quarter.jpeg",
 };
-
-function getModelImages(model: string): string[] {
-  const key = Object.keys(MODEL_IMAGES).find(k => model?.includes(k));
-  return key ? MODEL_IMAGES[key] : [];
+function carImg(model: string): string {
+  return (Object.entries(MI).find(([k]) => model?.includes(k))?.[1]) || "";
 }
 
-const DEFAULT_PREFS: Preferences = {
+// ─── Time helpers ───
+function timeAgo(date: string): string {
+  if (!date) return "";
+  const d = new Date(date);
+  const now = new Date();
+  const diff = Math.floor((now.getTime() - d.getTime()) / 1000);
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+  return `${Math.floor(diff / 604800)}w ago`;
+}
+function isNew(date: string): boolean {
+  if (!date) return false;
+  return (new Date().getTime() - new Date(date).getTime()) < 48 * 3600 * 1000;
+}
+
+const DP: Preferences = {
   id: "default", budget_min: 800000, budget_max: 1600000,
-  fuel_pref: ["Diesel", "Petrol"], body_types: ["SUV"],
+  fuel_pref: ["Diesel", "Petrol"], body_types: ["SUV", "Pickup"],
   transmission: "Any", max_km: 120000, max_age: 9, max_owners: 2,
   wants_mods: true, wants_4x4: true,
   base_city: "Chennai", search_radius: 600,
@@ -53,784 +72,593 @@ const DEFAULT_PREFS: Preferences = {
   pickup_hunter: true, fourx4_hunter: true,
 };
 
-// Score color helper
-const scoreCol = (s: number) => s >= 80 ? "text-pw-green" : s >= 60 ? "text-pw-accent" : s >= 40 ? "text-amber-400" : "text-pw-red";
-const scoreBorder = (s: number) => s >= 80 ? "border-pw-green" : s >= 60 ? "border-pw-accent" : s >= 40 ? "border-amber-400" : "border-pw-red";
-const verdCol = (v: string) => v === "BUY" ? "text-pw-green border-pw-green" : v === "CONSIDER" ? "text-pw-accent border-pw-accent" : "text-pw-red border-pw-red";
-
 export default function Dashboard() {
   const [cars, setCars] = useState<any[]>([]);
-  const [prefs, setPrefs] = useState<Preferences>(DEFAULT_PREFS);
-  const [view, setView] = useState<"board" | "detail" | "prefs">("board");
+  const [prefs, setPrefs] = useState<Preferences>(DP);
+  const [view, setView] = useState<"grid" | "detail" | "prefs">("grid");
   const [sel, setSel] = useState<any>(null);
+  const [tab, setTab] = useState<"info" | "insights" | "checklist" | "ai">("info");
   const [ai, setAi] = useState<Record<string, any>>({});
   const [aiLoading, setAiLoading] = useState<Record<string, boolean>>({});
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState("score");
   const [fFuel, setFFuel] = useState("All");
   const [fStage, setFStage] = useState("All");
+  const [fHunter, setFHunter] = useState("All"); // All | diesel | pickup | 4x4
   const [showAdd, setShowAdd] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
-  const [checklists, setChecklists] = useState<Record<string, boolean>>({});
+  const [checks, setChecks] = useState<Record<string, boolean>>({});
   const [loading, setLoading] = useState(true);
-  const [seeding, setSeeding] = useState(false);
   const [scraping, setScraping] = useState(false);
-  const [scrapeResults, setScrapeResults] = useState<any>(null);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
 
-  // Theme effect
+  const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 3000); };
+
   useEffect(() => {
-    const saved = localStorage.getItem("pw-theme") as "dark" | "light" | null;
-    if (saved) { setTheme(saved); document.documentElement.classList.toggle("light", saved === "light"); }
-  }, []);
-
-  const toggleTheme = () => {
-    const next = theme === "dark" ? "light" : "dark";
-    setTheme(next);
-    document.documentElement.classList.toggle("light", next === "light");
-    localStorage.setItem("pw-theme", next);
-  };
-
-  const flash = (m: string) => { setToast(m); setTimeout(() => setToast(null), 2500); };
-
-  // ─── Load data from Supabase ───
-  useEffect(() => {
+    const t = localStorage.getItem("pw-theme") as "dark" | "light" | null;
+    if (t) { setTheme(t); document.documentElement.classList.toggle("light", t === "light"); }
+    else { setTheme("light"); document.documentElement.classList.add("light"); }
     loadData();
   }, []);
 
   async function loadData() {
     setLoading(true);
     try {
-      // Load cars
-      const { data: carsData } = await supabase.from("cars").select("*").order("created_at", { ascending: false });
-      if (carsData && carsData.length > 0) {
-        setCars(carsData);
-      } else {
-        // If DB is empty, use seed data locally
-        setCars(SEED_CARS as any[]);
-      }
-
-      // Load prefs
-      const { data: prefsData } = await supabase.from("preferences").select("*").eq("id", "default").single();
-      if (prefsData) setPrefs(prefsData as Preferences);
-
-      // Load AI analyses
-      const { data: aiData } = await supabase.from("ai_analysis").select("*");
-      if (aiData) {
-        const aiMap: Record<string, any> = {};
-        aiData.forEach((a: any) => { aiMap[a.car_id] = a; });
-        setAi(aiMap);
-      }
-
-      // Load checklists
-      const { data: checkData } = await supabase.from("checklist").select("*");
-      if (checkData) {
-        const checkMap: Record<string, boolean> = {};
-        checkData.forEach((c: any) => { checkMap[c.id] = c.checked; });
-        setChecklists(checkMap);
-      }
-    } catch (e) {
-      // If Supabase not configured, fall back to seed data
-      setCars(SEED_CARS as any[]);
-    }
+      const { data: cd } = await supabase.from("cars").select("*").order("created_at", { ascending: false });
+      setCars(cd && cd.length > 0 ? cd : SEED_CARS as any[]);
+      const { data: pd } = await supabase.from("preferences").select("*").eq("id", "default").single();
+      if (pd) setPrefs(pd as Preferences);
+      const { data: ad } = await supabase.from("ai_analysis").select("*");
+      if (ad) { const m: Record<string, any> = {}; ad.forEach((a: any) => { m[a.car_id] = a; }); setAi(m); }
+      const { data: ck } = await supabase.from("checklist").select("*");
+      if (ck) { const m: Record<string, boolean> = {}; ck.forEach((c: any) => { m[c.id] = c.checked; }); setChecks(m); }
+    } catch { setCars(SEED_CARS as any[]); }
     setLoading(false);
   }
 
-  // ─── Seed database ───
-  async function seedDB() {
-    setSeeding(true);
-    try {
-      const resp = await fetch("/api/seed", { method: "POST" });
-      const data = await resp.json();
-      if (data.success) {
-        flash(`Seeded ${data.count} cars!`);
-        await loadData();
-      } else {
-        flash(`Error: ${data.error}`);
-      }
-    } catch {
-      flash("Failed to seed — is Supabase configured?");
-    }
-    setSeeding(false);
-  }
+  const toggleTheme = () => {
+    const n = theme === "dark" ? "light" : "dark";
+    setTheme(n); document.documentElement.classList.toggle("light", n === "light");
+    localStorage.setItem("pw-theme", n);
+  };
 
-  // ─── Run scraper ───
-  async function runScrape(sources?: string[]) {
-    setScraping(true);
-    flash("🕷 Scraping started...");
-    try {
-      const resp = await fetch("/api/scrape", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          sources: sources || [],
-          city: prefs.base_city?.toLowerCase() || "chennai",
-          budgetMax: prefs.budget_max || 2500000,
-        }),
-      });
-      const data = await resp.json();
-      setScrapeResults(data);
-      if (data.success) {
-        flash(`🕷 Found ${data.total_found} cars from ${data.results?.length || 0} sources`);
-        await loadData(); // Reload from DB
-      } else {
-        flash(`Scrape error: ${data.error}`);
-      }
-    } catch (e: any) {
-      flash(`Scrape failed: ${e.message}`);
-    }
-    setScraping(false);
-  }
-
-  // ─── Save preferences ───
-  async function savePrefs(p: Preferences) {
+  const savePrefs = async (p: Preferences) => {
     setPrefs(p);
-    try {
-      await supabase.from("preferences").upsert({ ...p, updated_at: new Date().toISOString() }, { onConflict: "id" });
-    } catch {}
-  }
+    try { await supabase.from("preferences").upsert({ ...p, updated_at: new Date().toISOString() }, { onConflict: "id" }); } catch {}
+  };
 
-  // ─── Update car stage ───
-  async function updateStage(id: string, stage: string) {
-    setCars(prev => prev.map(c => c.id === id ? { ...c, stage } : c));
+  const updateStage = async (id: string, stage: string) => {
+    setCars(p => p.map(c => c.id === id ? { ...c, stage } : c));
     if (sel?.id === id) setSel({ ...sel, stage });
-    try {
-      await supabase.from("cars").update({ stage, updated_at: new Date().toISOString() }).eq("id", id);
-    } catch {}
-    flash(`→ ${stage}`);
-  }
+    try { await supabase.from("cars").update({ stage }).eq("id", id); } catch {}
+    flash(`→ ${SCOUT_STAGES.find(s => s.id === stage)?.label || stage}`);
+  };
 
-  // ─── Checklist ───
-  function isChecked(carId: string, cat: string, item: string) { return !!checklists[`${carId}-${cat}-${item}`]; }
+  const ck = (cid: string, cat: string, item: string) => !!checks[`${cid}-${cat}-${item}`];
+  const toggleCk = async (cid: string, cat: string, item: string) => {
+    const k = `${cid}-${cat}-${item}`, v = !checks[k];
+    setChecks(p => ({ ...p, [k]: v }));
+    try { await supabase.from("checklist").upsert({ id: k, car_id: cid, category: cat, item, checked: v }, { onConflict: "id" }); } catch {}
+  };
+  const ckProg = (cid: string) => {
+    let t = 0, d = 0;
+    CHECKLIST_TEMPLATE.forEach(c => c.items.forEach(i => { t++; if (ck(cid, c.cat, i)) d++; }));
+    return { t, d, p: t ? Math.round(d / t * 100) : 0 };
+  };
 
-  async function toggleCheck(carId: string, cat: string, item: string) {
-    const key = `${carId}-${cat}-${item}`;
-    const newVal = !checklists[key];
-    setChecklists(prev => ({ ...prev, [key]: newVal }));
-    try {
-      await supabase.from("checklist").upsert({ id: key, car_id: carId, category: cat, item, checked: newVal, updated_at: new Date().toISOString() }, { onConflict: "id" });
-    } catch {}
-  }
-
-  function checkProgress(carId: string) {
-    let total = 0, done = 0;
-    CHECKLIST_TEMPLATE.forEach(c => c.items.forEach(i => { total++; if (isChecked(carId, c.cat, i)) done++; }));
-    return { total, done, pct: total ? Math.round(done / total * 100) : 0 };
-  }
-
-  // ─── AI Analysis (via server API route) ───
-  async function runAi(car: any) {
+  const runAi = async (car: any) => {
     setAiLoading(p => ({ ...p, [car.id]: true }));
     try {
-      const resp = await fetch("/api/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ car, prefs }),
-      });
-      const data = await resp.json();
-      if (data.success) {
-        setAi(prev => ({ ...prev, [car.id]: data.analysis }));
-        flash("AI analysis complete");
-      } else {
-        flash(`AI error: ${data.error}`);
-      }
-    } catch {
-      flash("AI analysis failed");
-    }
+      const r = await fetch("/api/analyze", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ car, prefs }) });
+      const d = await r.json();
+      if (d.success) { setAi(p => ({ ...p, [car.id]: d.analysis })); flash("Analysis complete"); }
+      else flash(`Error: ${d.error}`);
+    } catch { flash("AI analysis failed"); }
     setAiLoading(p => ({ ...p, [car.id]: false }));
-  }
+  };
 
-  // ─── Add car ───
+  const runScrape = async () => {
+    setScraping(true); flash("Scraping...");
+    try {
+      const r = await fetch("/api/scrape", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ city: prefs.base_city?.toLowerCase() || "chennai", budgetMax: prefs.budget_max }) });
+      const d = await r.json();
+      if (d.success) { flash(`Found ${d.total_found} cars`); await loadData(); }
+      else flash(`Error: ${d.error}`);
+    } catch { flash("Scrape failed"); }
+    setScraping(false);
+  };
+
   const emptyNew = { model: "", variant: "", year: 2023, km: 0, price: 0, fuel: "Diesel", transmission: "Manual", body_type: "SUV", drivetrain: "2WD", owners: 1, reg_state: "TN", city: "Chennai", color: "", source: "Cars24", certified: false, link: "", notes: "", stage: "discovered", seller_name: "", seller_phone: "", seller_type: "unknown" };
   const [nc, setNc] = useState<any>(emptyNew);
-
-  async function addCar() {
+  const addCar = async () => {
     if (!nc.model) { flash("Model required"); return; }
-    const car = { ...nc, id: `m${Date.now()}`, price: +nc.price, km: +nc.km, year: +nc.year, owners: +nc.owners, images: [], scraped_at: new Date().toISOString(), created_at: new Date().toISOString(), updated_at: new Date().toISOString() };
-    setCars(prev => [car, ...prev]);
+    const car = { ...nc, id: `m${Date.now()}`, price: +nc.price, km: +nc.km, year: +nc.year, owners: +nc.owners, images: [], scraped_at: new Date().toISOString(), created_at: new Date().toISOString() };
+    setCars(p => [car, ...p]);
     try { await supabase.from("cars").upsert(car, { onConflict: "id" }); } catch {}
-    setNc(emptyNew);
-    setShowAdd(false);
-    flash("Car added");
-  }
-
-  async function deleteCar(id: string) {
-    setCars(prev => prev.filter(c => c.id !== id));
+    setNc(emptyNew); setShowAdd(false); flash("Added!");
+  };
+  const delCar = async (id: string) => {
+    setCars(p => p.filter(c => c.id !== id));
     try { await supabase.from("cars").delete().eq("id", id); } catch {}
     flash("Removed");
-  }
+  };
 
-  // ─── Process & sort ───
+  // ─── Process ───
   const processed = cars
     .map(c => ({ ...c, score: scoreCar(c, prefs), insights: generateInsights(c, prefs) }))
     .filter(c => {
       if (search && !c.model.toLowerCase().includes(search.toLowerCase())) return false;
       if (fFuel !== "All" && c.fuel !== fFuel) return false;
       if (fStage !== "All" && (c.stage || "discovered") !== fStage) return false;
+      if (fHunter === "diesel" && !isDieselHunterMatch(c, prefs)) return false;
+      if (fHunter === "pickup" && !isPickupHunterMatch(c, prefs)) return false;
+      if (fHunter === "4x4" && !is4x4HunterMatch(c, prefs)) return false;
       return true;
     })
     .sort((a, b) => sort === "score" ? b.score - a.score : sort === "price_low" ? a.price - b.price : sort === "price_high" ? b.price - a.price : sort === "km" ? a.km - b.km : b.year - a.year);
 
-  // ─── LOADING STATE ───
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="text-4xl mb-4">🚗</div>
-          <div className="text-pw-accent text-lg font-bold">Loading Pre-Worshipped...</div>
-        </div>
-      </div>
-    );
-  }
+  const sCol = (s: number) => s >= 80 ? "#16a34a" : s >= 60 ? "#ca8a04" : s >= 40 ? "#ea580c" : "#dc2626";
 
-  // ─── BOARD VIEW ───
-  const renderBoard = () => {
-    const dieselHunterCount = prefs.diesel_hunter ? processed.filter(c => isDieselHunterMatch(c, prefs)).length : 0;
-    const pickupHunterCount = prefs.pickup_hunter ? processed.filter(c => isPickupHunterMatch(c, prefs)).length : 0;
-    const fourx4HunterCount = prefs.fourx4_hunter ? processed.filter(c => is4x4HunterMatch(c, prefs)).length : 0;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="text-center"><div className="text-5xl mb-4 animate-bounce">🚗</div><p className="text-lg font-semibold" style={{ color: "var(--accent)" }}>Loading...</p></div>
+    </div>
+  );
 
-    return (
+  // ═══════════════════════════════════════
+  // GRID VIEW
+  // ═══════════════════════════════════════
+  const Grid = () => (
     <div>
-      {/* Hunters + Location Bar */}
-      <div className="bg-pw-card rounded-xl border border-pw-border p-4 mb-4">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-pw-muted">📍</span>
-            <select className="bg-pw-deep border border-pw-border rounded-lg px-3 py-1.5 text-xs outline-none cursor-pointer text-pw-text"
-              value={prefs.base_city} onChange={e => savePrefs({ ...prefs, base_city: e.target.value })}>
-              {BASE_LOCATIONS.map(l => <option key={l.id} value={l.city}>{l.label}</option>)}
-            </select>
-            <select className="bg-pw-deep border border-pw-border rounded-lg px-2 py-1.5 text-xs outline-none cursor-pointer text-pw-muted"
-              value={prefs.search_radius} onChange={e => savePrefs({ ...prefs, search_radius: +e.target.value })}>
-              <option value={200}>200km</option>
-              <option value={400}>400km</option>
-              <option value={600}>600km</option>
-              <option value={1000}>1000km</option>
-              <option value={9999}>All India</option>
-            </select>
-          </div>
+      {/* Hunter Quick Filters */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+        {[
+          { id: "All", label: `All (${cars.length})`, icon: "📋" },
+          { id: "diesel", label: `Diesel 2L+ (${cars.filter(c => isDieselHunterMatch(c, prefs)).length})`, icon: "🏴" },
+          { id: "pickup", label: `Pickups (${cars.filter(c => isPickupHunterMatch(c, prefs)).length})`, icon: "🛻" },
+          { id: "4x4", label: `4x4/AWD (${cars.filter(c => is4x4HunterMatch(c, prefs)).length})`, icon: "🏔" },
+        ].map(h => (
+          <button key={h.id} onClick={() => setFHunter(fHunter === h.id ? "All" : h.id)}
+            className="shrink-0 px-3 py-2 rounded-lg text-xs font-semibold border transition-all whitespace-nowrap"
+            style={{ borderColor: fHunter === h.id ? "var(--accent)" : "var(--border)", background: fHunter === h.id ? "var(--accent)" : "var(--card)", color: fHunter === h.id ? "#fff" : "var(--text)" }}>
+            {h.icon} {h.label}
+          </button>
+        ))}
+      </div>
 
-          <div className="flex items-center gap-2 flex-wrap">
-            {/* Diesel Hunter */}
-            <button className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${prefs.diesel_hunter ? "border-amber-600 bg-amber-900/30 text-amber-400" : "border-pw-border text-pw-muted"}`}
-              onClick={() => savePrefs({ ...prefs, diesel_hunter: !prefs.diesel_hunter })}>
-              🏴 Diesel{prefs.diesel_hunter ? ` (${dieselHunterCount})` : ""}
-            </button>
-            {/* Pickup Hunter */}
-            <button className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${prefs.pickup_hunter ? "border-orange-600 bg-orange-900/30 text-orange-400" : "border-pw-border text-pw-muted"}`}
-              onClick={() => savePrefs({ ...prefs, pickup_hunter: !prefs.pickup_hunter })}>
-              🛻 Pickup{prefs.pickup_hunter ? ` (${pickupHunterCount})` : ""}
-            </button>
-            {/* 4x4 Hunter */}
-            <button className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${prefs.fourx4_hunter ? "border-emerald-600 bg-emerald-900/30 text-emerald-400" : "border-pw-border text-pw-muted"}`}
-              onClick={() => savePrefs({ ...prefs, fourx4_hunter: !prefs.fourx4_hunter })}>
-              🏔 4x4{prefs.fourx4_hunter ? ` (${fourx4HunterCount})` : ""}
-            </button>
-          </div>
+      {/* Search + Sort + Actions */}
+      <div className="flex gap-2 mb-4 flex-wrap items-center">
+        <div className="relative flex-1 min-w-[200px]">
+          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm" style={{ color: "var(--muted)" }}>🔍</span>
+          <input className="w-full pl-9 pr-3 py-2.5 rounded-xl text-sm outline-none" placeholder="Search any car..."
+            style={{ background: "var(--card)", border: "1px solid var(--border)", color: "var(--text)" }}
+            value={search} onChange={e => setSearch(e.target.value)} />
         </div>
-      </div>
-
-      {/* Pipeline filter */}
-      <div className="flex gap-2 mb-5 flex-wrap">
-        {SCOUT_STAGES.map(s => {
-          const count = processed.filter(c => (c.stage || "discovered") === s.id).length;
-          return (
-            <button key={s.id}
-              className={`px-3 py-1.5 rounded-md text-xs font-semibold border transition-all ${fStage === s.id ? "bg-opacity-20 border-current" : "border-pw-border text-pw-muted hover:border-pw-accent"}`}
-              style={{ color: fStage === s.id ? s.color : undefined, borderColor: fStage === s.id ? s.color : undefined, backgroundColor: fStage === s.id ? s.color + "20" : undefined }}
-              onClick={() => setFStage(fStage === s.id ? "All" : s.id)}>
-              {s.icon} {s.label} ({count})
-            </button>
-          );
-        })}
-        <button className={`px-3 py-1.5 rounded-md text-xs font-semibold border ${fStage === "All" ? "border-pw-accent text-pw-accent bg-pw-accent/10" : "border-pw-border text-pw-muted"}`}
-          onClick={() => setFStage("All")}>All ({processed.length})</button>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-2 mb-4 flex-wrap">
-        <input className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-sm flex-1 min-w-[160px] outline-none focus:border-pw-accent"
-          placeholder="Search model..." value={search} onChange={e => setSearch(e.target.value)} />
-        <select className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-xs outline-none cursor-pointer"
+        <select className="px-3 py-2.5 rounded-xl text-xs outline-none cursor-pointer"
+          style={{ background: "var(--card)", border: "1px solid var(--border)", color: "var(--text)" }}
+          value={sort} onChange={e => setSort(e.target.value)}>
+          <option value="score">Best Match</option>
+          <option value="price_low">Price: Low → High</option>
+          <option value="price_high">Price: High → Low</option>
+          <option value="km">Lowest KM</option>
+          <option value="year">Newest First</option>
+        </select>
+        <select className="px-3 py-2.5 rounded-xl text-xs outline-none cursor-pointer"
+          style={{ background: "var(--card)", border: "1px solid var(--border)", color: "var(--text)" }}
           value={fFuel} onChange={e => setFFuel(e.target.value)}>
           <option value="All">All Fuels</option>
           {[...new Set(cars.map(c => c.fuel))].map(f => <option key={f}>{f}</option>)}
         </select>
-        <select className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-xs outline-none cursor-pointer"
-          value={sort} onChange={e => setSort(e.target.value)}>
-          <option value="score">Best Match</option>
-          <option value="price_low">Price ↑</option>
-          <option value="price_high">Price ↓</option>
-          <option value="km">Lowest KM</option>
-          <option value="year">Newest</option>
-        </select>
-        <button className="bg-pw-accent text-pw-bg px-4 py-2 rounded-lg text-xs font-bold hover:brightness-110"
-          onClick={() => setShowAdd(true)}>+ Add</button>
-        <button className={`px-4 py-2 rounded-lg text-xs font-bold border transition-all ${scraping ? "border-pw-green text-pw-green animate-pulse" : "border-pw-purple text-pw-purple hover:bg-pw-purple/10"}`}
-          onClick={() => runScrape()} disabled={scraping}>
-          {scraping ? "🕷 Scraping..." : "🕷 Scrape"}
+        <button onClick={() => setShowAdd(true)} className="px-4 py-2.5 rounded-xl text-xs font-bold" style={{ background: "var(--accent)", color: "#fff" }}>+ Add Car</button>
+        <button onClick={runScrape} disabled={scraping} className="px-4 py-2.5 rounded-xl text-xs font-bold border"
+          style={{ borderColor: scraping ? "#16a34a" : "var(--border)", color: scraping ? "#16a34a" : "var(--muted)" }}>
+          {scraping ? "⏳ Scraping..." : "🕷 Find Cars"}
         </button>
       </div>
 
-      {/* Car list */}
-      {processed.map(car => {
-        const dep = calcDepreciation(car);
-        const trust = SOURCE_TRUST[car.source];
-        const stage = SCOUT_STAGES.find(s => s.id === (car.stage || "discovered"));
-        const cp = checkProgress(car.id);
-        const dist = getDistance(prefs.base_city || "Chennai", car.city);
-        const distInfo = getDistanceLabel(dist);
-        const disp = getDisplacement(car.model);
-        const isDH = isDieselHunterMatch(car, prefs);
-        const isPH = isPickupHunterMatch(car, prefs);
-        const is4H = is4x4HunterMatch(car, prefs);
+      {/* Stage Pills */}
+      <div className="flex gap-1.5 mb-5 overflow-x-auto pb-1">
+        <button onClick={() => setFStage("All")} className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold"
+          style={{ background: fStage === "All" ? "var(--accent)" : "var(--card)", color: fStage === "All" ? "#fff" : "var(--muted)", border: "1px solid var(--border)" }}>
+          All
+        </button>
+        {SCOUT_STAGES.map(s => {
+          const cnt = processed.filter(c => (c.stage || "discovered") === s.id).length;
+          if (!cnt) return null;
+          return (
+            <button key={s.id} onClick={() => setFStage(fStage === s.id ? "All" : s.id)}
+              className="shrink-0 px-3 py-1.5 rounded-full text-[11px] font-semibold"
+              style={{ background: fStage === s.id ? s.color : "var(--card)", color: fStage === s.id ? "#fff" : "var(--muted)", border: `1px solid ${fStage === s.id ? s.color : "var(--border)"}` }}>
+              {s.icon} {s.label} ({cnt})
+            </button>
+          );
+        })}
+      </div>
 
-        return (
-          <div key={car.id}
-            className="bg-pw-card rounded-xl border border-pw-border p-4 mb-2.5 cursor-pointer transition-all hover:border-pw-accent"
-            onClick={() => { setSel(car); setView("detail"); }}>
-            <div className="flex gap-3.5 items-start">
-              <div className={`w-12 h-12 rounded-full border-[3px] flex items-center justify-center text-[15px] font-bold shrink-0 ${scoreBorder(car.score)} ${scoreCol(car.score)}`}>
-                {car.score}
+      {/* Results count */}
+      <p className="text-xs mb-3" style={{ color: "var(--muted)" }}>{processed.length} cars found</p>
+
+      {/* ─── CAR GRID ─── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {processed.map(car => {
+          const dep = calcDepreciation(car);
+          const trust = SOURCE_TRUST[car.source];
+          const dist = getDistance(prefs.base_city || "Chennai", car.city);
+          const distL = getDistanceLabel(dist);
+          const stage = SCOUT_STAGES.find(s => s.id === (car.stage || "discovered"));
+          const img = (car.images?.length ? car.images[0] : "") || carImg(car.model);
+          const isDH = isDieselHunterMatch(car, prefs);
+          const isPH = isPickupHunterMatch(car, prefs);
+          const is4H = is4x4HunterMatch(car, prefs);
+          const fresh = isNew(car.scraped_at || car.created_at);
+
+          return (
+            <div key={car.id} className="rounded-2xl overflow-hidden cursor-pointer transition-all hover:shadow-xl group"
+              style={{ background: "var(--card)", border: "1px solid var(--border)" }}
+              onClick={() => { setSel(car); setView("detail"); setTab("info"); }}>
+
+              {/* Image */}
+              <div className="relative h-44 overflow-hidden" style={{ background: "var(--deep)" }}>
+                {img ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={img} alt={car.model} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" onError={e => (e.currentTarget.style.display = "none")} />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-4xl">🚗</div>
+                )}
+                {/* Score badge */}
+                <div className="absolute top-3 left-3 w-10 h-10 rounded-full flex items-center justify-center text-xs font-extrabold text-white shadow-lg" style={{ background: sCol(car.score) }}>{car.score}</div>
+                {/* Badges */}
+                <div className="absolute top-3 right-3 flex gap-1">
+                  {fresh && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-500 text-white">NEW</span>}
+                  {isDH && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-600 text-white">🏴 2L+</span>}
+                  {isPH && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-orange-600 text-white">🛻</span>}
+                  {is4H && <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-600 text-white">4x4</span>}
+                </div>
+                {/* Stage */}
+                <div className="absolute bottom-3 left-3">
+                  <span className="px-2 py-1 rounded-md text-[10px] font-semibold backdrop-blur-sm" style={{ background: (stage?.color || "#666") + "cc", color: "#fff" }}>
+                    {stage?.icon} {stage?.label}
+                  </span>
+                </div>
+                {/* Time */}
+                {car.scraped_at && (
+                  <div className="absolute bottom-3 right-3">
+                    <span className="px-2 py-1 rounded-md text-[10px] backdrop-blur-sm" style={{ background: "#000a", color: "#ccc" }}>{timeAgo(car.scraped_at)}</span>
+                  </div>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between flex-wrap gap-1.5">
-                  <div>
-                    <div className="text-[15px] font-bold text-pw-text font-extrabold">{car.model}</div>
-                    <div className="text-[11px] text-pw-muted mt-0.5">{car.year} · {car.city} · {car.source}</div>
+
+              {/* Content */}
+              <div className="p-4">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="min-w-0">
+                    <h3 className="font-bold text-sm leading-tight truncate" style={{ color: "var(--text)" }}>{car.model}</h3>
+                    <p className="text-[11px] mt-0.5 truncate" style={{ color: "var(--muted)" }}>{car.year} · {car.city} · {car.source}</p>
                   </div>
-                  <div className="text-right">
-                    <div className="text-lg font-bold text-pw-accent">₹{(car.price / 100000).toFixed(1)}L</div>
-                    {dep && <div className={`text-[10px] ${dep.depPct >= 35 ? "text-pw-green" : "text-pw-muted"}`}>{dep.depPct}% off new</div>}
+                  <div className="text-right shrink-0">
+                    <div className="text-lg font-extrabold" style={{ color: "var(--accent)" }}>₹{(car.price / 100000).toFixed(1)}L</div>
+                    {dep && dep.depPct >= 25 && <div className="text-[10px] font-semibold text-green-600">↓{dep.depPct}% off new</div>}
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {[car.fuel, car.transmission, `${(car.km / 1000).toFixed(0)}k km`, `${car.owners}own`, car.reg_state].map((t, i) => (
-                    <span key={i} className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-pw-border/50 text-pw-text">{t}</span>
-                  ))}
-                  {car.drivetrain === "4WD" && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-900/30 text-pw-text">4x4</span>}
-                  {car.certified && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-pw-green/10 text-pw-green">✓</span>}
-                  {dist < 9999 && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-semibold" style={{ color: distInfo.color, backgroundColor: distInfo.color + "15" }}>{dist}km</span>}
-                  {isDH && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-amber-900/40 text-amber-400">🏴 {(disp/1000).toFixed(1)}L</span>}
-                  {isPH && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-orange-900/40 text-orange-400">🛻 Pickup</span>}
-                  {is4H && <span className="inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-900/40 text-emerald-400">🏔 4x4</span>}
+
+                {/* Quick specs */}
+                <div className="flex gap-2 mt-3 text-[11px] flex-wrap" style={{ color: "var(--muted)" }}>
+                  <span>{(car.km / 1000).toFixed(0)}k km</span>
+                  <span>·</span>
+                  <span>{car.fuel}</span>
+                  <span>·</span>
+                  <span>{car.transmission}</span>
+                  {car.owners && <><span>·</span><span>{car.owners} owner{car.owners > 1 ? "s" : ""}</span></>}
+                  {dist < 9999 && dist > 0 && <><span>·</span><span style={{ color: distL.color }}>{dist}km</span></>}
                 </div>
-                <div className="flex gap-2.5 mt-2 text-[11px] items-center flex-wrap">
-                  <span style={{ color: stage?.color }}>{stage?.icon} {stage?.label}</span>
-                  <span className="text-pw-green">↑{car.insights.whyBuy.length}</span>
-                  <span className="text-pw-red">↓{car.insights.whyNot.length}</span>
-                  {ai[car.id] && <span className={`font-bold ${ai[car.id].verdict === "BUY" ? "text-pw-green" : ai[car.id].verdict === "CONSIDER" ? "text-pw-accent" : "text-pw-red"}`}>AI:{ai[car.id].verdict}</span>}
-                  {cp.done > 0 && <span className="text-pw-muted">☑{cp.pct}%</span>}
+
+                {/* Quick insights count */}
+                <div className="flex gap-3 mt-3 text-[11px]">
+                  <span className="text-green-600 font-semibold">✓ {car.insights.whyBuy.length} pros</span>
+                  <span className="text-red-500 font-semibold">✕ {car.insights.whyNot.length} cons</span>
+                  {ai[car.id] && <span className="font-bold" style={{ color: ai[car.id].verdict === "BUY" ? "#16a34a" : ai[car.id].verdict === "SKIP" ? "#dc2626" : "#ca8a04" }}>AI: {ai[car.id].verdict}</span>}
                 </div>
               </div>
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
 
-      {processed.length === 0 && (
-        <div className="text-center py-16 text-pw-muted">
-          <div className="text-5xl mb-4">🚗</div>
-          <p className="text-lg mb-4">No cars found</p>
-          {cars.length === 0 && (
-            <button className="bg-pw-accent text-pw-bg px-6 py-3 rounded-lg font-bold" onClick={seedDB} disabled={seeding}>
-              {seeding ? "Seeding..." : "Seed Database with 75 Cars"}
-            </button>
-          )}
+      {!processed.length && (
+        <div className="text-center py-20">
+          <div className="text-5xl mb-4">🔍</div>
+          <p className="text-lg font-semibold" style={{ color: "var(--muted)" }}>No cars match your filters</p>
+          <button onClick={() => { setSearch(""); setFFuel("All"); setFStage("All"); setFHunter("All"); }} className="mt-3 text-sm underline" style={{ color: "var(--accent)" }}>Clear all filters</button>
         </div>
       )}
     </div>
   );
-  };
 
-  // ─── DETAIL VIEW ───
-  const renderDetail = () => {
+  // ═══════════════════════════════════════
+  // DETAIL VIEW (Tabbed)
+  // ═══════════════════════════════════════
+  const Detail = () => {
     if (!sel) return null;
     const car = { ...sel, score: scoreCar(sel, prefs), insights: generateInsights(sel, prefs) };
     const intel = findModelIntel(car.model);
     const dep = calcDepreciation(car);
     const trust = SOURCE_TRUST[car.source];
     const a = ai[car.id];
-    const imgs = car.images?.length ? car.images : getModelImages(car.model);
-    const cp = checkProgress(car.id);
-    const stage = SCOUT_STAGES.find(s => s.id === (car.stage || "discovered"));
+    const img = (car.images?.length ? car.images[0] : "") || carImg(car.model);
+    const dist = getDistance(prefs.base_city || "Chennai", car.city);
+    const distL = getDistanceLabel(dist);
+    const cp = ckProg(car.id);
+    const disp = getDisplacement(car.model);
 
     return (
       <div>
-        <button className="text-pw-muted border border-pw-border rounded-lg px-4 py-2 text-xs font-semibold mb-4 hover:border-pw-accent"
-          onClick={() => setView("board")}>← Back</button>
+        <button onClick={() => setView("grid")} className="mb-4 text-sm font-semibold flex items-center gap-1" style={{ color: "var(--accent)" }}>← Back to list</button>
 
-        {/* Header */}
-        <div className="bg-pw-card rounded-xl border border-pw-border p-5 mb-3.5">
-          <div className="flex justify-between flex-wrap gap-3">
-            <div>
-              <h2 className="text-[22px] font-bold text-pw-text font-extrabold">{car.model}</h2>
-              <div className="text-pw-muted text-xs mt-1">{car.variant} · {car.year} · {car.city}</div>
-              <div className="flex gap-1.5 mt-3 flex-wrap">
-                {SCOUT_STAGES.map(s => (
-                  <button key={s.id}
-                    className="px-2.5 py-1 rounded text-[11px] font-semibold border transition-all"
-                    style={{ color: (car.stage || "discovered") === s.id ? s.color : "#5e6278", borderColor: (car.stage || "discovered") === s.id ? s.color : "#1a1d2b", backgroundColor: (car.stage || "discovered") === s.id ? s.color + "20" : "transparent" }}
-                    onClick={() => updateStage(car.id, s.id)}>
-                    {s.icon} {s.label}
-                  </button>
-                ))}
-              </div>
+        {/* Hero */}
+        <div className="rounded-2xl overflow-hidden mb-4" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <div className="relative h-56 sm:h-72" style={{ background: "var(--deep)" }}>
+            {img && (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={img} alt={car.model} className="w-full h-full object-cover" onError={e => (e.currentTarget.style.display = "none")} />
+            )}
+            <div className="absolute bottom-0 left-0 right-0 p-5" style={{ background: "linear-gradient(transparent, #000c)" }}>
+              <h1 className="text-2xl font-extrabold text-white">{car.model}</h1>
+              <p className="text-white/70 text-sm">{car.variant} · {car.year} · {car.city}</p>
             </div>
-            <div className="text-right">
-              <div className="text-3xl font-bold text-pw-accent">₹{(car.price / 100000).toFixed(1)}L</div>
-              <div className={`w-[52px] h-[52px] rounded-full border-[3px] inline-flex items-center justify-center text-lg font-bold mt-2 ${scoreBorder(car.score)} ${scoreCol(car.score)}`}>{car.score}</div>
-            </div>
+            <div className="absolute top-4 left-4 w-14 h-14 rounded-full flex items-center justify-center text-lg font-extrabold text-white shadow-xl" style={{ background: sCol(car.score) }}>{car.score}</div>
+            {car.scraped_at && <span className="absolute top-4 right-4 px-2 py-1 rounded-md text-xs backdrop-blur-sm" style={{ background: "#000a", color: "#ccc" }}>{timeAgo(car.scraped_at)}</span>}
           </div>
 
-          {/* Images */}
-          {imgs.length > 0 && (
-            <div className="flex gap-2 mt-4 overflow-x-auto pb-2">
-              {imgs.map((url: string, i: number) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={url} alt="" className="h-40 rounded-lg object-cover border border-pw-border" onError={(e) => (e.currentTarget.style.display = "none")} />
+          <div className="p-5">
+            {/* Price + Stage + Actions */}
+            <div className="flex justify-between items-start flex-wrap gap-3 mb-4">
+              <div>
+                <div className="text-3xl font-extrabold" style={{ color: "var(--accent)" }}>₹{(car.price / 100000).toFixed(1)}L</div>
+                {dep && <p className="text-sm mt-1"><span className="text-green-600 font-semibold">Save ₹{(dep.savedAmt / 100000).toFixed(1)}L</span> <span style={{ color: "var(--muted)" }}>({dep.depPct}% off ₹{(dep.avgNew / 100000).toFixed(0)}L new)</span></p>}
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                {car.link && <a href={car.link} target="_blank" rel="noreferrer" className="px-4 py-2 rounded-xl text-xs font-bold text-white" style={{ background: "var(--accent)" }}>View Listing ↗</a>}
+                {car.seller_phone && <a href={`tel:${car.seller_phone}`} className="px-4 py-2 rounded-xl text-xs font-bold bg-green-600 text-white">📞 Call Seller</a>}
+              </div>
+            </div>
+
+            {/* Stage selector */}
+            <div className="flex gap-1.5 mb-4 overflow-x-auto pb-1">
+              {SCOUT_STAGES.map(s => (
+                <button key={s.id} onClick={() => updateStage(car.id, s.id)}
+                  className="shrink-0 px-3 py-1.5 rounded-lg text-[11px] font-semibold border"
+                  style={{ borderColor: (car.stage || "discovered") === s.id ? s.color : "var(--border)", background: (car.stage || "discovered") === s.id ? s.color + "20" : "transparent", color: (car.stage || "discovered") === s.id ? s.color : "var(--muted)" }}>
+                  {s.icon} {s.label}
+                </button>
               ))}
             </div>
-          )}
 
-          {/* Specs grid */}
-          <div className="grid grid-cols-4 sm:grid-cols-8 gap-3 mt-4">
-            {[["Year", car.year], ["KM", car.km?.toLocaleString()], ["Fuel", car.fuel], ["Trans", car.transmission], ["Drive", car.drivetrain], ["Owners", car.owners], ["Reg", car.reg_state], ["Color", car.color]].map(([l, v]) => (
-              <div key={String(l)}><div className="text-[10px] text-pw-muted uppercase tracking-wider">{l}</div><div className="text-sm font-semibold">{v}</div></div>
-            ))}
-          </div>
-          {car.notes && <div className="mt-3 p-3 bg-pw-deep rounded-lg text-xs text-pw-muted leading-relaxed">📝 {car.notes}</div>}
-
-          {/* Seller + Listing Actions */}
-          <div className="flex flex-wrap gap-3 mt-3 items-center">
-            {car.link && (
-              <a href={car.link} target="_blank" rel="noreferrer"
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-pw-accent text-pw-bg text-xs font-bold hover:brightness-110 transition-all">
-                🔗 View Original Listing
-              </a>
-            )}
-            {car.seller_name && (
-              <div className="flex items-center gap-2 px-3 py-2 bg-pw-deep rounded-lg border border-pw-border">
-                <span className="text-xs text-pw-muted">👤</span>
-                <span className="text-xs font-semibold">{car.seller_name}</span>
-                {car.seller_type && <span className="text-[10px] text-pw-muted">({car.seller_type})</span>}
-              </div>
-            )}
-            {car.seller_phone && (
-              <a href={`tel:${car.seller_phone}`}
-                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-pw-green/10 border border-pw-green/30 text-pw-green text-xs font-bold">
-                📞 {car.seller_phone}
-              </a>
-            )}
-            {!car.seller_phone && !car.seller_name && car.source && (
-              <span className="text-[11px] text-pw-muted">No seller contact — check original listing on {car.source}</span>
-            )}
-          </div>
-        </div>
-
-        {/* Depreciation + Trust */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-          {dep && (
-            <div className="bg-pw-card rounded-xl border border-pw-border p-5">
-              <h3 className="text-pw-accent text-xs uppercase tracking-wider font-bold mb-3">📉 Depreciation</h3>
-              <div className={`text-3xl font-bold ${dep.depPct >= 35 ? "text-pw-green" : "text-pw-accent"}`}>{dep.depPct}%</div>
-              <div className="text-[11px] text-pw-muted">off new (avg ₹{(dep.avgNew / 100000).toFixed(0)}L)</div>
-              <div className="text-sm mt-2">Save <span className="text-pw-green font-bold">₹{(dep.savedAmt / 100000).toFixed(1)}L</span></div>
-              <div className="text-[11px] text-pw-muted mt-1">{dep.perYear}%/yr avg</div>
+            {/* Quick specs */}
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-3">
+              {([["Year", car.year], ["KM", (car.km || 0).toLocaleString()], ["Fuel", car.fuel], ["Trans", car.transmission], ["Drive", car.drivetrain], ["Owners", car.owners], ["Reg", car.reg_state], ["Dist", dist < 9999 ? `${dist}km` : "—"]] as [string, any][]).map(([l, v]) => (
+                <div key={l}><div className="text-[10px] uppercase tracking-wider" style={{ color: "var(--muted)" }}>{l}</div><div className="text-sm font-semibold">{v}</div></div>
+              ))}
             </div>
-          )}
-          {trust && (
-            <div className="bg-pw-card rounded-xl border border-pw-border p-5">
-              <h3 className="text-pw-accent text-xs uppercase tracking-wider font-bold mb-3">🏪 Source Trust</h3>
-              <div className="text-lg font-bold">{trust.label}</div>
-              <div className="text-xs text-pw-muted mt-1">{trust.desc}</div>
-              <div className={`text-xs mt-2 ${trust.premiumPct > 0 ? "text-pw-red" : "text-pw-green"}`}>
-                {trust.premiumPct > 0 ? `~${trust.premiumPct}% premium` : trust.premiumPct < 0 ? `~${Math.abs(trust.premiumPct)}% below platforms` : "Market rate"}
-              </div>
-            </div>
-          )}
-        </div>
 
-        {/* Insights */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 mt-3.5">
-          <div className="bg-pw-card rounded-xl border border-pw-border p-5">
-            <h3 className="text-pw-green text-xs uppercase tracking-wider font-bold mb-3">✦ Why Buy ({car.insights.whyBuy.length})</h3>
-            {car.insights.whyBuy.map((x: string, i: number) => (
-              <div key={i} className="p-2 rounded-lg bg-pw-green/5 border-l-[3px] border-pw-green mb-1.5 text-xs leading-relaxed">{x}</div>
-            ))}
-          </div>
-          <div className="bg-pw-card rounded-xl border border-pw-border p-5">
-            <h3 className="text-pw-red text-xs uppercase tracking-wider font-bold mb-3">✦ Why Not ({car.insights.whyNot.length})</h3>
-            {car.insights.whyNot.map((x: string, i: number) => (
-              <div key={i} className="p-2 rounded-lg bg-pw-red/5 border-l-[3px] border-pw-red mb-1.5 text-xs leading-relaxed">{x}</div>
-            ))}
-          </div>
-        </div>
-
-        {/* Model Intel */}
-        {intel && (
-          <div className="bg-pw-card rounded-xl border border-pw-border p-5 mt-3.5">
-            <h3 className="text-pw-accent text-xs uppercase tracking-wider font-bold mb-3">Model Intel</h3>
-            <div className="grid grid-cols-5 gap-3 mb-3">
-              {[["Reliability", intel.intel.reliability], ["Resale", intel.intel.resale], ["Parts", intel.intel.parts], ["Community", intel.intel.community], ["Mods", intel.intel.modPotential]].map(([l, v]) => (
-                <div key={String(l)} className="text-center">
-                  <div className={`text-xl font-bold ${Number(v) >= 7 ? "text-pw-green" : Number(v) >= 5 ? "text-pw-accent" : "text-pw-red"}`}>{v}</div>
-                  <div className="text-[10px] text-pw-muted">{l}</div>
+            {/* Seller info */}
+            {(car.seller_name || car.seller_phone) && (
+              <div className="mt-4 p-3 rounded-xl flex items-center gap-3" style={{ background: "var(--deep)", border: "1px solid var(--border)" }}>
+                <span>👤</span>
+                <div>
+                  {car.seller_name && <div className="text-sm font-semibold">{car.seller_name}</div>}
+                  {car.seller_phone && <div className="text-xs" style={{ color: "var(--accent)" }}>{car.seller_phone}</div>}
+                  {car.seller_type && car.seller_type !== "unknown" && <div className="text-[10px]" style={{ color: "var(--muted)" }}>{car.seller_type}</div>}
                 </div>
-              ))}
-            </div>
-            <div className="text-xs text-pw-muted">Service: <span className="text-pw-text font-semibold">{intel.intel.avgServiceCost}</span></div>
-            {intel.intel.inspectSpecial && (
-              <div className="mt-3">
-                <div className="text-[10px] text-pw-accent uppercase tracking-wider mb-1">Model-specific checks</div>
-                {intel.intel.inspectSpecial.map((x, i) => <div key={i} className="text-xs text-pw-muted py-1 border-b border-pw-border last:border-0">🔧 {x}</div>)}
               </div>
             )}
-          </div>
-        )}
 
-        {/* Checklist */}
-        <div className="bg-pw-card rounded-xl border border-pw-border p-5 mt-3.5">
-          <div className="flex justify-between items-center mb-3">
-            <h3 className="text-pw-accent text-xs uppercase tracking-wider font-bold">☑ Pre-Purchase Checklist</h3>
-            <span className={`text-xs font-bold ${cp.pct >= 80 ? "text-pw-green" : cp.pct >= 40 ? "text-pw-accent" : "text-pw-muted"}`}>{cp.pct}% ({cp.done}/{cp.total})</span>
-          </div>
-          <div className="w-full h-1.5 bg-pw-border rounded-full mb-4">
-            <div className={`h-full rounded-full transition-all ${cp.pct >= 80 ? "bg-pw-green" : "bg-pw-accent"}`} style={{ width: `${cp.pct}%` }} />
-          </div>
-          {CHECKLIST_TEMPLATE.map(cat => (
-            <div key={cat.cat} className="mb-3">
-              <div className="text-[11px] font-bold uppercase tracking-wider mb-1.5">{cat.cat}</div>
-              {cat.items.map(item => (
-                <label key={item} className={`flex gap-2 py-1 cursor-pointer text-xs ${isChecked(car.id, cat.cat, item) ? "text-pw-green line-through" : "text-pw-muted"}`}>
-                  <input type="checkbox" checked={isChecked(car.id, cat.cat, item)} onChange={() => toggleCheck(car.id, cat.cat, item)} />
-                  {item}
-                </label>
-              ))}
+            {/* Trust + Distance */}
+            <div className="flex gap-3 mt-4 flex-wrap">
+              {trust && <span className="px-3 py-1.5 rounded-lg text-[11px] font-semibold" style={{ background: "var(--deep)", border: "1px solid var(--border)" }}>{trust.label} · {trust.desc}</span>}
+              {dist > 0 && dist < 9999 && <span className="px-3 py-1.5 rounded-lg text-[11px] font-semibold" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: distL.color }}>📍 {distL.label}</span>}
+              {disp > 0 && <span className="px-3 py-1.5 rounded-lg text-[11px] font-semibold" style={{ background: "var(--deep)", border: "1px solid var(--border)" }}>🔧 {(disp/1000).toFixed(1)}L engine</span>}
             </div>
+
+            {car.notes && <p className="mt-4 text-xs leading-relaxed p-3 rounded-xl" style={{ background: "var(--deep)", color: "var(--muted)" }}>📝 {car.notes}</p>}
+          </div>
+        </div>
+
+        {/* Tabs */}
+        <div className="flex gap-1 mb-4 p-1 rounded-xl" style={{ background: "var(--deep)" }}>
+          {([["info", "📊 Analysis"], ["insights", "💡 Insights"], ["checklist", `☑ Checklist (${cp.p}%)`], ["ai", "🤖 AI"]] as [string, string][]).map(([id, label]) => (
+            <button key={id} onClick={() => setTab(id as any)} className="flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all"
+              style={{ background: tab === id ? "var(--card)" : "transparent", color: tab === id ? "var(--text)" : "var(--muted)", boxShadow: tab === id ? "0 1px 3px #0002" : "none" }}>
+              {label}
+            </button>
           ))}
         </div>
 
-        {/* AI Analysis */}
-        <div className="bg-pw-card rounded-xl border border-pw-border p-5 mt-3.5">
-          <div className="flex justify-between items-center">
-            <h3 className="text-pw-purple text-xs uppercase tracking-wider font-bold">🤖 AI Deep Analysis</h3>
-            <button className="bg-pw-accent text-pw-bg px-4 py-1.5 rounded-lg text-xs font-bold"
-              onClick={() => runAi(car)} disabled={aiLoading[car.id]}>
-              {aiLoading[car.id] ? "Analyzing..." : a ? "Re-analyze" : "Run AI"}
-            </button>
-          </div>
-          {a && a.verdict !== "ERROR" ? (
-            <div className="mt-3">
-              <div className="flex gap-3 items-center mb-3">
-                <span className={`px-4 py-1.5 rounded-lg border-2 text-base font-extrabold ${verdCol(a.verdict)} bg-opacity-10`}
-                  style={{ backgroundColor: a.verdict === "BUY" ? "#34d39918" : a.verdict === "CONSIDER" ? "#d4a84318" : "#f8717118" }}>
-                  {a.verdict}
-                </span>
-                <span className="text-xs text-pw-muted">Confidence: <strong className="text-pw-text">{a.confidence}/10</strong></span>
-                {a.fair_price && <span className="text-xs text-pw-accent">Fair: {a.fair_price}</span>}
+        {/* Tab Content */}
+        <div className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          {tab === "info" && intel && (
+            <div>
+              <h3 className="text-sm font-bold mb-3">Model Intelligence</h3>
+              <div className="grid grid-cols-5 gap-3 mb-4">
+                {([["Reliability", intel.intel.reliability], ["Resale", intel.intel.resale], ["Parts", intel.intel.parts], ["Community", intel.intel.community], ["Mods", intel.intel.modPotential]] as [string, number][]).map(([l, v]) => (
+                  <div key={l} className="text-center p-2 rounded-xl" style={{ background: "var(--deep)" }}>
+                    <div className="text-xl font-bold" style={{ color: v >= 7 ? "#16a34a" : v >= 5 ? "#ca8a04" : "#dc2626" }}>{v}</div>
+                    <div className="text-[10px]" style={{ color: "var(--muted)" }}>{l}</div>
+                  </div>
+                ))}
               </div>
-              <div className="text-sm leading-relaxed mb-3">{a.summary}</div>
-              {[["Hidden Year-1 Costs", a.hidden_costs], ["Negotiation Tip", a.negotiation_tip], ["Inspect These", a.check_these], ["3-5 Year Outlook", a.long_term]].map(([l, v]) => v ? (
-                <div key={String(l)} className="mb-2.5">
-                  <div className="text-[10px] text-pw-accent uppercase tracking-wider">{l}</div>
-                  <div className="text-xs text-pw-muted p-2.5 bg-pw-deep rounded-lg mt-1 leading-relaxed">{v}</div>
+              {intel.intel.avgServiceCost && <p className="text-xs" style={{ color: "var(--muted)" }}>Avg service: <strong>{intel.intel.avgServiceCost}</strong></p>}
+              {intel.intel.inspectSpecial && (
+                <div className="mt-4">
+                  <h4 className="text-xs font-bold mb-2" style={{ color: "var(--accent)" }}>🔧 Model-specific inspection points</h4>
+                  {intel.intel.inspectSpecial.map((x, i) => <p key={i} className="text-xs py-1.5 border-b" style={{ color: "var(--muted)", borderColor: "var(--border)" }}>{x}</p>)}
                 </div>
-              ) : null)}
+              )}
             </div>
-          ) : a?.verdict === "ERROR" ? <div className="text-pw-red text-xs mt-3">{a.summary}</div>
-            : <div className="text-pw-muted text-xs mt-3">Click Run AI for Claude-powered analysis</div>}
+          )}
+          {tab === "info" && !intel && <p className="text-sm" style={{ color: "var(--muted)" }}>No model intelligence available for this car.</p>}
+
+          {tab === "insights" && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <h3 className="text-sm font-bold mb-3 text-green-600">✓ Why Buy ({car.insights.whyBuy.length})</h3>
+                {car.insights.whyBuy.map((x: string, i: number) => <div key={i} className="p-2.5 rounded-lg mb-2 text-xs leading-relaxed border-l-[3px] border-green-500" style={{ background: "#16a34a10" }}>{x}</div>)}
+                {!car.insights.whyBuy.length && <p className="text-xs" style={{ color: "var(--muted)" }}>No strong buy signals</p>}
+              </div>
+              <div>
+                <h3 className="text-sm font-bold mb-3 text-red-500">✕ Why Not ({car.insights.whyNot.length})</h3>
+                {car.insights.whyNot.map((x: string, i: number) => <div key={i} className="p-2.5 rounded-lg mb-2 text-xs leading-relaxed border-l-[3px] border-red-500" style={{ background: "#dc262610" }}>{x}</div>)}
+                {!car.insights.whyNot.length && <p className="text-xs" style={{ color: "var(--muted)" }}>No major red flags</p>}
+              </div>
+            </div>
+          )}
+
+          {tab === "checklist" && (
+            <div>
+              <div className="w-full h-2 rounded-full mb-4" style={{ background: "var(--border)" }}>
+                <div className="h-full rounded-full transition-all" style={{ width: `${cp.p}%`, background: cp.p >= 80 ? "#16a34a" : "var(--accent)" }} />
+              </div>
+              {CHECKLIST_TEMPLATE.map(cat => (
+                <div key={cat.cat} className="mb-4">
+                  <h4 className="text-xs font-bold uppercase tracking-wider mb-2">{cat.cat}</h4>
+                  {cat.items.map(item => (
+                    <label key={item} className="flex gap-2 py-1.5 cursor-pointer text-xs items-start" style={{ color: ck(car.id, cat.cat, item) ? "#16a34a" : "var(--muted)", textDecoration: ck(car.id, cat.cat, item) ? "line-through" : "none" }}>
+                      <input type="checkbox" checked={ck(car.id, cat.cat, item)} onChange={() => toggleCk(car.id, cat.cat, item)} className="mt-0.5" />
+                      {item}
+                    </label>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {tab === "ai" && (
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-sm font-bold">🤖 AI Deep Analysis</h3>
+                <button onClick={() => runAi(car)} disabled={aiLoading[car.id]} className="px-4 py-2 rounded-xl text-xs font-bold" style={{ background: "var(--accent)", color: "#fff" }}>
+                  {aiLoading[car.id] ? "Analyzing..." : a ? "Re-analyze" : "Run Analysis"}
+                </button>
+              </div>
+              {a && a.verdict !== "ERROR" ? (
+                <div>
+                  <div className="flex gap-3 items-center mb-4">
+                    <span className="px-4 py-2 rounded-xl text-base font-extrabold text-white" style={{ background: a.verdict === "BUY" ? "#16a34a" : a.verdict === "SKIP" ? "#dc2626" : "#ca8a04" }}>{a.verdict}</span>
+                    <span className="text-xs" style={{ color: "var(--muted)" }}>Confidence: <strong>{a.confidence}/10</strong></span>
+                    {a.fair_price && <span className="text-xs" style={{ color: "var(--accent)" }}>Fair value: {a.fair_price}</span>}
+                  </div>
+                  <p className="text-sm leading-relaxed mb-4">{a.summary}</p>
+                  {([["Hidden Costs (Year 1)", a.hidden_costs], ["Negotiation Tip", a.negotiation_tip], ["Must Inspect", a.check_these], ["3-5 Year Outlook", a.long_term]] as [string, string][]).map(([l, v]) => v ? (
+                    <div key={l} className="mb-3">
+                      <h4 className="text-[11px] font-bold uppercase tracking-wider mb-1" style={{ color: "var(--accent)" }}>{l}</h4>
+                      <p className="text-xs leading-relaxed p-3 rounded-xl" style={{ background: "var(--deep)", color: "var(--muted)" }}>{v}</p>
+                    </div>
+                  ) : null)}
+                </div>
+              ) : (
+                <p className="text-sm" style={{ color: "var(--muted)" }}>{a?.summary || "Click 'Run Analysis' for Claude-powered deep analysis — verdict, negotiation tips, hidden costs, and fair price estimate."}</p>
+              )}
+            </div>
+          )}
         </div>
 
-        <button className="text-pw-red border border-pw-red/30 rounded-lg px-4 py-2 text-xs font-semibold mt-3.5 hover:bg-pw-red/10"
-          onClick={() => { deleteCar(car.id); setView("board"); }}>Remove car</button>
+        <button onClick={() => { delCar(car.id); setView("grid"); }} className="mt-4 text-xs underline" style={{ color: "#dc2626" }}>Remove this car</button>
       </div>
     );
   };
 
-  // ─── PREFS VIEW ───
-  const renderPrefs = () => (
-    <div>
-      <div className="bg-pw-card rounded-xl border border-pw-border p-5 mb-3.5">
-        <h3 className="text-pw-accent font-bold mb-3">Budget (₹)</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">Min</label>
-            <input className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-sm w-full outline-none" type="number" value={prefs.budget_min} onChange={e => savePrefs({ ...prefs, budget_min: +e.target.value })} />
-            <div className="text-[10px] text-pw-muted mt-1">₹{(prefs.budget_min / 100000).toFixed(1)}L</div>
+  // ═══════════════════════════════════════
+  // PREFERENCES
+  // ═══════════════════════════════════════
+  const Prefs = () => (
+    <div className="space-y-4">
+      {([
+        ["Budget", (
+          <div key="b" className="grid grid-cols-2 gap-3">
+            <div><label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Min (₹)</label><input type="number" value={prefs.budget_min} onChange={e => savePrefs({ ...prefs, budget_min: +e.target.value })} className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }} /><span className="text-[10px]" style={{ color: "var(--muted)" }}>₹{(prefs.budget_min/100000).toFixed(1)}L</span></div>
+            <div><label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Max (₹)</label><input type="number" value={prefs.budget_max} onChange={e => savePrefs({ ...prefs, budget_max: +e.target.value })} className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }} /><span className="text-[10px]" style={{ color: "var(--muted)" }}>₹{(prefs.budget_max/100000).toFixed(1)}L</span></div>
           </div>
-          <div>
-            <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">Max</label>
-            <input className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-sm w-full outline-none" type="number" value={prefs.budget_max} onChange={e => savePrefs({ ...prefs, budget_max: +e.target.value })} />
-            <div className="text-[10px] text-pw-muted mt-1">₹{(prefs.budget_max / 100000).toFixed(1)}L</div>
+        )],
+        ["Location", (
+          <div key="l" className="grid grid-cols-2 gap-3">
+            <div><label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Base City</label><select value={prefs.base_city} onChange={e => savePrefs({ ...prefs, base_city: e.target.value })} className="w-full px-3 py-2 rounded-xl text-sm cursor-pointer outline-none" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}>{BASE_LOCATIONS.map(l => <option key={l.id} value={l.city}>{l.label}</option>)}</select></div>
+            <div><label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Radius</label><select value={prefs.search_radius} onChange={e => savePrefs({ ...prefs, search_radius: +e.target.value })} className="w-full px-3 py-2 rounded-xl text-sm cursor-pointer outline-none" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}><option value={200}>200km</option><option value={400}>400km</option><option value={600}>600km</option><option value={1000}>1000km</option><option value={9999}>All India</option></select></div>
           </div>
-        </div>
-      </div>
-
-      <div className="bg-pw-card rounded-xl border border-pw-border p-5 mb-3.5">
-        <h3 className="text-pw-accent font-bold mb-3">Fuel</h3>
-        <div className="flex gap-2 flex-wrap">
-          {["Diesel", "Petrol", "Hybrid", "Electric"].map(f => (
-            <button key={f} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border ${prefs.fuel_pref?.includes(f) ? "border-pw-accent text-pw-accent bg-pw-accent/10" : "border-pw-border text-pw-muted"}`}
-              onClick={() => savePrefs({ ...prefs, fuel_pref: prefs.fuel_pref?.includes(f) ? prefs.fuel_pref.filter(x => x !== f) : [...(prefs.fuel_pref || []), f] })}>{f}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-pw-card rounded-xl border border-pw-border p-5 mb-3.5">
-        <h3 className="text-pw-accent font-bold mb-3">Body Type</h3>
-        <div className="flex gap-2 flex-wrap">
-          {["SUV", "Sedan", "MUV", "Hatchback"].map(b => (
-            <button key={b} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border ${prefs.body_types?.includes(b) ? "border-pw-accent text-pw-accent bg-pw-accent/10" : "border-pw-border text-pw-muted"}`}
-              onClick={() => savePrefs({ ...prefs, body_types: prefs.body_types?.includes(b) ? prefs.body_types.filter(x => x !== b) : [...(prefs.body_types || []), b] })}>{b}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-pw-card rounded-xl border border-pw-border p-5 mb-3.5">
-        <h3 className="text-pw-accent font-bold mb-3">Transmission</h3>
-        <div className="flex gap-2">
-          {["Any", "Manual", "Automatic"].map(t => (
-            <button key={t} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border ${prefs.transmission === t ? "border-pw-accent text-pw-accent bg-pw-accent/10" : "border-pw-border text-pw-muted"}`}
-              onClick={() => savePrefs({ ...prefs, transmission: t })}>{t}</button>
-          ))}
-        </div>
-      </div>
-
-      <div className="bg-pw-card rounded-xl border border-pw-border p-5 mb-3.5">
-        <h3 className="text-pw-accent font-bold mb-3">Driver Profile</h3>
-        <div className="flex gap-4">
-          <label className="flex gap-2 cursor-pointer text-xs text-pw-muted items-center">
-            <input type="checkbox" checked={prefs.wants_mods} onChange={e => savePrefs({ ...prefs, wants_mods: e.target.checked })} /> I mod cars
-          </label>
-          <label className="flex gap-2 cursor-pointer text-xs text-pw-muted items-center">
-            <input type="checkbox" checked={prefs.wants_4x4} onChange={e => savePrefs({ ...prefs, wants_4x4: e.target.checked })} /> Prefer 4x4
-          </label>
-        </div>
-      </div>
-
-      {/* Location */}
-      <div className="bg-pw-card rounded-xl border border-pw-border p-5 mb-3.5">
-        <h3 className="text-pw-accent font-bold mb-3">📍 My Location</h3>
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">Base City</label>
-            <select className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-sm w-full outline-none cursor-pointer"
-              value={prefs.base_city} onChange={e => savePrefs({ ...prefs, base_city: e.target.value })}>
-              {BASE_LOCATIONS.map(l => <option key={l.id} value={l.city}>{l.label}</option>)}
-            </select>
-            <div className="text-[10px] text-pw-muted mt-1">Scores adjust based on distance from here</div>
+        )],
+        ["Fuel Preference", (
+          <div key="f" className="flex gap-2 flex-wrap">
+            {["Diesel", "Petrol", "Hybrid", "Electric"].map(f => <button key={f} onClick={() => savePrefs({ ...prefs, fuel_pref: prefs.fuel_pref?.includes(f) ? prefs.fuel_pref.filter(x => x !== f) : [...(prefs.fuel_pref||[]), f] })} className="px-4 py-2 rounded-xl text-xs font-semibold border" style={{ borderColor: prefs.fuel_pref?.includes(f) ? "var(--accent)" : "var(--border)", background: prefs.fuel_pref?.includes(f) ? "var(--accent)" : "var(--card)", color: prefs.fuel_pref?.includes(f) ? "#fff" : "var(--muted)" }}>{f}</button>)}
           </div>
-          <div>
-            <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">Search Radius</label>
-            <select className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-sm w-full outline-none cursor-pointer"
-              value={prefs.search_radius} onChange={e => savePrefs({ ...prefs, search_radius: +e.target.value })}>
-              <option value={200}>200 km</option>
-              <option value={400}>400 km</option>
-              <option value={600}>600 km</option>
-              <option value={1000}>1000 km</option>
-              <option value={9999}>All India</option>
-            </select>
-            <div className="text-[10px] text-pw-muted mt-1">Cars beyond this get penalized in score</div>
-          </div>
-        </div>
-      </div>
-
-      {/* Diesel Hunter */}
-      <div className={`rounded-xl border p-5 mb-3.5 ${prefs.diesel_hunter ? "bg-amber-950/20 border-amber-800/50" : "bg-pw-card border-pw-border"}`}>
-        <div className="flex justify-between items-center mb-3">
-          <h3 className={`font-bold ${prefs.diesel_hunter ? "text-amber-400" : "text-pw-accent"}`}>🏴 Diesel Hunter Mode</h3>
-          <button
-            className={`px-4 py-1.5 rounded-lg text-xs font-bold border transition-all ${prefs.diesel_hunter ? "border-amber-600 bg-amber-900/50 text-amber-400" : "border-pw-border text-pw-muted"}`}
-            onClick={() => savePrefs({ ...prefs, diesel_hunter: !prefs.diesel_hunter })}>
-            {prefs.diesel_hunter ? "ON" : "OFF"}
-          </button>
-        </div>
-        {prefs.diesel_hunter && (
-          <div>
-            <div className="text-xs text-pw-muted mb-3">Automatically highlights diesel cars with 2.0L+ engines within your search radius. These get a +15 score bonus.</div>
-            <div>
-              <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">Minimum Displacement</label>
-              <div className="flex gap-2">
-                {[1500, 2000, 2500].map(d => (
-                  <button key={d} className={`px-3.5 py-1.5 rounded-full text-xs font-semibold border ${prefs.min_displacement === d ? "border-amber-600 text-amber-400 bg-amber-900/30" : "border-pw-border text-pw-muted"}`}
-                    onClick={() => savePrefs({ ...prefs, min_displacement: d })}>{(d/1000).toFixed(1)}L+</button>
-                ))}
+        )],
+        ["Hunters", (
+          <div key="h" className="space-y-2">
+            {([
+              ["diesel_hunter", "🏴 Diesel Hunter", "Highlight diesel 2L+ engines", prefs.diesel_hunter],
+              ["pickup_hunter", "🛻 Pickup Hunter", "Flag Isuzu, Hilux, Tata pickups", prefs.pickup_hunter],
+              ["fourx4_hunter", "🏔 4x4/AWD Hunter", "Flag all 4WD/AWD capable vehicles", prefs.fourx4_hunter],
+            ] as [string, string, string, boolean][]).map(([key, label, desc, val]) => (
+              <div key={key} className="flex justify-between items-center p-3 rounded-xl" style={{ background: "var(--deep)", border: "1px solid var(--border)" }}>
+                <div><div className="text-sm font-semibold">{label}</div><div className="text-[11px]" style={{ color: "var(--muted)" }}>{desc}</div></div>
+                <button onClick={() => savePrefs({ ...prefs, [key]: !val })} className="px-4 py-1.5 rounded-lg text-xs font-bold" style={{ background: val ? "#16a34a" : "var(--border)", color: val ? "#fff" : "var(--muted)" }}>{val ? "ON" : "OFF"}</button>
               </div>
-            </div>
-            <div className="mt-3 p-3 bg-pw-deep rounded-lg text-[11px] text-pw-muted leading-relaxed">
-              <strong className="text-amber-400">What this does:</strong> Scans all listings for diesel engines ≥{(prefs.min_displacement/1000).toFixed(1)}L within {prefs.search_radius}km of {prefs.base_city}. Matching cars get flagged with 🏴 and scored +15 points. Models tracked: Fortuner 2.8, Thar 2.2, XUV700 2.2, Scorpio N 2.0, Harrier/Safari 2.0, Compass 2.0, Octavia 2.0 TDI, and more.
-            </div>
+            ))}
           </div>
-        )}
-      </div>
-
-      <button className="border border-pw-border text-pw-muted rounded-lg px-4 py-2 text-xs font-semibold hover:border-pw-accent" onClick={seedDB} disabled={seeding}>
-        {seeding ? "Seeding..." : "Re-seed database (75 cars)"}
-      </button>
+        )],
+      ] as [string, React.ReactNode][]).map(([title, content]) => (
+        <div key={title} className="rounded-2xl p-5" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
+          <h3 className="text-sm font-bold mb-3" style={{ color: "var(--accent)" }}>{title}</h3>
+          {content}
+        </div>
+      ))}
     </div>
   );
 
-  // ─── ADD MODAL ───
-  const renderAddModal = () => !showAdd ? null : (
-    <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowAdd(false)}>
-      <div className="bg-pw-card rounded-2xl p-6 max-w-xl w-full max-h-[85vh] overflow-auto border border-pw-border" onClick={e => e.stopPropagation()}>
-        <h3 className="text-pw-accent font-bold text-lg mb-4">Add a Car</h3>
+  // ═══════════════════════════════════════
+  // ADD CAR MODAL
+  // ═══════════════════════════════════════
+  const AddModal = () => !showAdd ? null : (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "#0009" }} onClick={() => setShowAdd(false)}>
+      <div className="rounded-2xl p-6 max-w-xl w-full max-h-[85vh] overflow-auto" style={{ background: "var(--card)", border: "1px solid var(--border)" }} onClick={e => e.stopPropagation()}>
+        <h3 className="text-lg font-bold mb-4" style={{ color: "var(--accent)" }}>Add a Car</h3>
         <div className="grid grid-cols-2 gap-3">
-          {[["model", "Model *", "text", "Toyota Fortuner 2.8 AT"], ["variant", "Variant", "text", "2.8L Diesel AT 4x4"], ["year", "Year", "number", ""], ["km", "KM", "number", ""], ["price", "Price ₹", "number", ""], ["color", "Color", "text", ""], ["city", "City", "text", "Chennai"], ["link", "Listing URL", "text", "https://..."], ["seller_name", "Seller Name", "text", ""], ["seller_phone", "Seller Phone", "text", "+91..."]].map(([k, l, t, p]) => (
-            <div key={k}>
-              <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">{l}</label>
-              <input className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-sm w-full outline-none" type={t} placeholder={p} value={nc[k]} onChange={e => setNc({ ...nc, [k]: e.target.value })} />
-            </div>
+          {([["model","Model *","text","Toyota Fortuner 2.8 AT"],["variant","Variant","text",""],["year","Year","number","2023"],["km","KM","number",""],["price","Price ₹","number",""],["city","City","text","Chennai"],["link","Listing URL","text","https://..."],["seller_name","Seller Name","text",""],["seller_phone","Phone","text","+91"],["color","Color","text",""]] as [string,string,string,string][]).map(([k,l,t,p]) => (
+            <div key={k}><label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>{l}</label><input type={t} placeholder={p} value={nc[k]} onChange={e => setNc({...nc,[k]:e.target.value})} className="w-full px-3 py-2 rounded-xl text-sm outline-none" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }} /></div>
           ))}
-          {([["fuel", ["Diesel", "Petrol", "Hybrid", "Electric"]], ["transmission", ["Manual", "Automatic"]], ["body_type", ["SUV", "Sedan", "MUV", "Hatchback"]], ["drivetrain", ["2WD", "4WD", "AWD"]], ["reg_state", ["TN", "KA", "KL", "AP", "TS", "MH", "DL", "PY", "GA"]], ["source", ["Cars24", "Spinny", "OLX", "Toyota U Trust", "Mahindra First Choice", "Das WeltAuto", "Hyundai H Promise", "Maruti True Value", "Honda Auto Terrace", "Team-BHP", "Facebook", "Personal Network", "Direct Seller"]]] as [string, string[]][]).map(([k, opts]) => (
-            <div key={k}>
-              <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">{k}</label>
-              <select className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-xs w-full outline-none cursor-pointer" value={nc[k]} onChange={e => setNc({ ...nc, [k]: e.target.value })}>
-                {(opts as string[]).map(o => <option key={o}>{o}</option>)}
-              </select>
-            </div>
+          {([["fuel",["Diesel","Petrol","Hybrid"]],["transmission",["Manual","Automatic"]],["body_type",["SUV","Sedan","MUV","Pickup","Hatchback"]],["drivetrain",["2WD","4WD","AWD"]],["source",["Cars24","Spinny","OLX","Toyota U Trust","Mahindra First Choice","Das WeltAuto","Team-BHP","Facebook Marketplace","Facebook Group","Personal Network","Direct Seller","4x4India","Indian Offroaders","Bank Auction"]]] as [string,string[]][]).map(([k,opts]) => (
+            <div key={k}><label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>{k.replace("_"," ")}</label><select value={nc[k]} onChange={e => setNc({...nc,[k]:e.target.value})} className="w-full px-3 py-2 rounded-xl text-xs cursor-pointer outline-none" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }}>{opts.map(o => <option key={o}>{o}</option>)}</select></div>
           ))}
-          <div>
-            <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">Owners</label>
-            <input className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-sm w-full outline-none" type="number" min={0} value={nc.owners} onChange={e => setNc({ ...nc, owners: e.target.value })} />
-          </div>
-          <div className="flex items-end pb-1">
-            <label className="flex gap-2 cursor-pointer text-xs text-pw-muted items-center">
-              <input type="checkbox" checked={nc.certified} onChange={e => setNc({ ...nc, certified: e.target.checked })} /> Certified
-            </label>
-          </div>
         </div>
-        <div className="mt-2">
-          <label className="text-[10px] text-pw-muted uppercase tracking-wider block mb-1">Notes</label>
-          <textarea className="bg-pw-deep border border-pw-border rounded-lg px-3 py-2 text-sm w-full min-h-[50px] resize-y outline-none" value={nc.notes} onChange={e => setNc({ ...nc, notes: e.target.value })} />
-        </div>
+        <div className="mt-3"><label className="text-[10px] uppercase tracking-wider block mb-1" style={{ color: "var(--muted)" }}>Notes</label><textarea value={nc.notes} onChange={e => setNc({...nc,notes:e.target.value})} className="w-full px-3 py-2 rounded-xl text-sm outline-none min-h-[50px] resize-y" style={{ background: "var(--deep)", border: "1px solid var(--border)", color: "var(--text)" }} /></div>
         <div className="flex gap-3 mt-4">
-          <button className="bg-pw-accent text-pw-bg px-5 py-2 rounded-lg text-sm font-bold" onClick={addCar}>Add</button>
-          <button className="border border-pw-border text-pw-muted px-5 py-2 rounded-lg text-sm" onClick={() => setShowAdd(false)}>Cancel</button>
+          <button onClick={addCar} className="px-5 py-2.5 rounded-xl text-sm font-bold text-white" style={{ background: "var(--accent)" }}>Add Car</button>
+          <button onClick={() => setShowAdd(false)} className="px-5 py-2.5 rounded-xl text-sm" style={{ color: "var(--muted)", border: "1px solid var(--border)" }}>Cancel</button>
         </div>
       </div>
     </div>
   );
 
-  // ─── MAIN RENDER ───
+  // ═══════════════════════════════════════
+  // MAIN
+  // ═══════════════════════════════════════
   return (
     <div className="min-h-screen">
       {/* Header */}
-      <div className="px-5 py-4 border-b border-pw-border sticky top-0 z-50" style={{ background: "var(--deep)" }}>
-        <div className="max-w-4xl mx-auto flex justify-between items-center">
-          <div>
-            <h1 className="text-xl font-extrabold text-pw-accent tracking-tight">Pre-Worshipped</h1>
-            <div className="text-[10px] text-pw-muted uppercase tracking-[2px] mt-0.5">Car Intelligence · {cars.length} tracked</div>
+      <div className="sticky top-0 z-50 px-5 py-3 backdrop-blur-xl" style={{ background: "var(--bg)", borderBottom: "1px solid var(--border)" }}>
+        <div className="max-w-6xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <h1 className="text-lg font-extrabold tracking-tight" style={{ color: "var(--accent)" }}>Pre-Worshipped</h1>
+            <span className="text-[10px] px-2 py-0.5 rounded-full font-semibold" style={{ background: "var(--deep)", color: "var(--muted)", border: "1px solid var(--border)" }}>{cars.length} cars</span>
           </div>
-          <div className="flex gap-1.5 items-center">
-            {[["board", "🏠 Scout"], ["prefs", "⚙️ Prefs"]].map(([v, l]) => (
-              <button key={v} className={`px-3 py-1.5 rounded-lg text-[11px] font-bold border transition-all ${(view === v || (v === "board" && view === "detail")) ? "border-pw-accent text-pw-accent bg-pw-accent/10" : "border-pw-border text-pw-muted"}`}
-                onClick={() => setView(v as any)}>{l}</button>
+          <div className="flex gap-2 items-center">
+            <select value={prefs.base_city} onChange={e => savePrefs({...prefs, base_city: e.target.value})} className="px-2 py-1.5 rounded-lg text-[11px] outline-none cursor-pointer" style={{ background: "var(--card)", border: "1px solid var(--border)", color: "var(--text)" }}>
+              {BASE_LOCATIONS.map(l => <option key={l.id} value={l.city}>📍 {l.label}</option>)}
+            </select>
+            {([["grid", "🏠"], ["prefs", "⚙️"]] as [string, string][]).map(([v, icon]) => (
+              <button key={v} onClick={() => setView(v as any)} className="w-9 h-9 rounded-xl flex items-center justify-center text-sm"
+                style={{ background: (view === v || (v === "grid" && view === "detail")) ? "var(--accent)" : "var(--card)", color: (view === v || (v === "grid" && view === "detail")) ? "#fff" : "var(--muted)", border: "1px solid var(--border)" }}>
+                {icon}
+              </button>
             ))}
-            <button onClick={toggleTheme}
-              className="px-2.5 py-1.5 rounded-lg text-sm border border-pw-border hover:border-pw-accent transition-all ml-1"
-              title={`Switch to ${theme === "dark" ? "light" : "dark"} mode`}>
+            <button onClick={toggleTheme} className="w-9 h-9 rounded-xl flex items-center justify-center text-sm" style={{ background: "var(--card)", border: "1px solid var(--border)" }}>
               {theme === "dark" ? "☀️" : "🌙"}
             </button>
           </div>
@@ -838,20 +666,15 @@ export default function Dashboard() {
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-4 py-5">
-        {view === "board" && renderBoard()}
-        {view === "detail" && renderDetail()}
-        {view === "prefs" && renderPrefs()}
+      <div className="max-w-6xl mx-auto px-4 py-5">
+        {view === "grid" && <Grid />}
+        {view === "detail" && <Detail />}
+        {view === "prefs" && <Prefs />}
       </div>
 
-      {renderAddModal()}
+      <AddModal />
 
-      {/* Toast */}
-      {toast && (
-        <div className="fixed bottom-5 right-5 bg-pw-green text-pw-bg px-5 py-2.5 rounded-lg text-sm font-bold z-50 shadow-lg animate-pulse">
-          {toast}
-        </div>
-      )}
+      {toast && <div className="fixed bottom-5 left-1/2 -translate-x-1/2 px-6 py-3 rounded-xl text-sm font-semibold shadow-xl z-50" style={{ background: "var(--accent)", color: "#fff" }}>{toast}</div>}
     </div>
   );
 }
